@@ -14,26 +14,39 @@ const (
 	CmdTCPConnect byte = 0x01
 )
 
+// Request/negotiation flag bits, carried in the stream header and reply.
+const (
+	// FlagCompress signals the peer supports adaptive stream compression.
+	FlagCompress byte = 0x01
+)
+
+// Control-stream message bytes (heartbeat over the authenticated control stream).
+const (
+	CtrlPing byte = 0x01
+	CtrlPong byte = 0x02
+)
+
 // Reply status codes the server returns on a TCP stream after the dial attempt.
 const (
-	StatusOK            byte = 0x00
-	StatusGeneralErr    byte = 0x01
-	StatusConnRefused   byte = 0x02
-	StatusHostUnreach   byte = 0x03
-	StatusNotAllowed    byte = 0x04
+	StatusOK          byte = 0x00
+	StatusGeneralErr  byte = 0x01
+	StatusConnRefused byte = 0x02
+	StatusHostUnreach byte = 0x03
+	StatusNotAllowed  byte = 0x04
 )
 
 // StreamRequest is the header a client writes at the start of every proxy
 // stream, identifying the destination the server should dial.
 type StreamRequest struct {
-	Cmd  byte
-	Addr Address
+	Cmd   byte
+	Flags byte
+	Addr  Address
 }
 
-// WriteTo encodes the request (version, cmd, address) to w in a single write.
+// WriteTo encodes the request (version, cmd, flags, address) in a single write.
 func (rq StreamRequest) WriteTo(w io.Writer) (int64, error) {
-	buf := make([]byte, 0, 2+1+len(rq.Addr.Host)+18)
-	buf = append(buf, Version, rq.Cmd)
+	buf := make([]byte, 0, 3+1+len(rq.Addr.Host)+18)
+	buf = append(buf, Version, rq.Cmd, rq.Flags)
 	buf = rq.Addr.Encode(buf)
 	n, err := w.Write(buf)
 	return int64(n), err
@@ -41,7 +54,7 @@ func (rq StreamRequest) WriteTo(w io.Writer) (int64, error) {
 
 // ReadStreamRequest decodes a StreamRequest from r.
 func ReadStreamRequest(r io.Reader) (StreamRequest, error) {
-	var hdr [2]byte
+	var hdr [3]byte
 	if _, err := io.ReadFull(r, hdr[:]); err != nil {
 		return StreamRequest{}, err
 	}
@@ -52,22 +65,22 @@ func ReadStreamRequest(r io.Reader) (StreamRequest, error) {
 	if err != nil {
 		return StreamRequest{}, err
 	}
-	return StreamRequest{Cmd: hdr[1], Addr: addr}, nil
+	return StreamRequest{Cmd: hdr[1], Flags: hdr[2], Addr: addr}, nil
 }
 
-// WriteReply writes the one-byte dial status to w.
-func WriteReply(w io.Writer, status byte) error {
-	_, err := w.Write([]byte{status})
+// WriteReply writes the dial status plus the negotiated flags (2 bytes).
+func WriteReply(w io.Writer, status, flags byte) error {
+	_, err := w.Write([]byte{status, flags})
 	return err
 }
 
-// ReadReply reads the one-byte dial status from r.
-func ReadReply(r io.Reader) (byte, error) {
-	var b [1]byte
-	if _, err := io.ReadFull(r, b[:]); err != nil {
-		return 0, err
+// ReadReply reads the dial status and negotiated flags (2 bytes).
+func ReadReply(r io.Reader) (status, flags byte, err error) {
+	var b [2]byte
+	if _, err = io.ReadFull(r, b[:]); err != nil {
+		return 0, 0, err
 	}
-	return b[0], nil
+	return b[0], b[1], nil
 }
 
 // --- UDP datagram envelope (carried over QUIC DATAGRAM) ---

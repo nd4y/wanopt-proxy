@@ -5,36 +5,67 @@ package proxy
 import (
 	"io"
 	"log/slog"
-	"net"
-
-	"github.com/quic-go/quic-go"
 
 	"wanopt/internal/client"
+	"wanopt/internal/compress"
+	"wanopt/internal/metrics"
 )
 
 // Proxy serves local SOCKS5/HTTP listeners backed by a tunnel client.
 type Proxy struct {
 	c   *client.Client
+	m   *metrics.Metrics
 	log *slog.Logger
 }
 
 // New builds a Proxy around an established tunnel client.
 func New(c *client.Client, log *slog.Logger) *Proxy {
-	return &Proxy{c: c, log: log}
+	return &Proxy{c: c, m: c.Metrics(), log: log}
 }
 
-// relay copies bidirectionally between a local TCP conn and a tunnel stream.
-func relay(local net.Conn, stream quic.Stream) {
+// closeWriter is implemented by net.TCPConn (CloseWrite) and used to half-close.
+type closeWriter interface{ CloseWrite() error }
+
+// relay bridges a local endpoint and a tunnel stream, applying adaptive
+// compression in whichever direction was negotiated and counting payload bytes.
+//
+// localR/localW are the local side (a single net.Conn for SOCKS, or a buffered
+// reader + conn for HTTP CONNECT). The client is the *sender* on the app->tunnel
+// direction and the *receiver* on the tunnel->app direction.
+func (p *Proxy) relay(localR io.Reader, localW io.Writer, ts *client.Stream) {
+	if p.m != nil {
+		p.m.StreamsTotal.Inc()
+		p.m.ActiveStreams.Inc()
+		defer p.m.ActiveStreams.Dec()
+	}
 	done := make(chan struct{}, 2)
+	// app -> tunnel
 	go func() {
-		io.Copy(stream, local)
-		stream.Close()
+		var n int64
+		if ts.Compressed {
+			n, _ = compress.Copy(ts, localR)
+		} else {
+			n, _ = io.Copy(ts, localR)
+		}
+		ts.Close()
+		if p.m != nil {
+			p.m.AddUp(n)
+		}
 		done <- struct{}{}
 	}()
+	// tunnel -> app
 	go func() {
-		io.Copy(local, stream)
-		if tc, ok := local.(*net.TCPConn); ok {
-			tc.CloseWrite()
+		var n int64
+		if ts.Compressed {
+			n, _ = compress.Decopy(localW, ts)
+		} else {
+			n, _ = io.Copy(localW, ts)
+		}
+		if cw, ok := localW.(closeWriter); ok {
+			cw.CloseWrite()
+		}
+		if p.m != nil {
+			p.m.AddDown(n)
 		}
 		done <- struct{}{}
 	}()

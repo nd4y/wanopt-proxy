@@ -10,6 +10,7 @@ import (
 
 	"github.com/quic-go/quic-go"
 
+	"wanopt/internal/acl"
 	"wanopt/internal/protocol"
 )
 
@@ -20,6 +21,7 @@ const udpIdleTimeout = 60 * time.Second
 // home router's NAT table, and forwards replies back over QUIC datagrams.
 type udpNAT struct {
 	conn quic.Connection
+	acl  *acl.List
 	log  *slog.Logger
 
 	mu    sync.Mutex
@@ -33,8 +35,8 @@ type udpFlow struct {
 	lastSeen  time.Time
 }
 
-func newUDPNAT(conn quic.Connection, log *slog.Logger) *udpNAT {
-	return &udpNAT{conn: conn, log: log, flows: make(map[string]*udpFlow)}
+func newUDPNAT(conn quic.Connection, list *acl.List, log *slog.Logger) *udpNAT {
+	return &udpNAT{conn: conn, acl: list, log: log, flows: make(map[string]*udpFlow)}
 }
 
 func flowKey(sessionID uint64, target string) string {
@@ -44,6 +46,9 @@ func flowKey(sessionID uint64, target string) string {
 // forward sends a client datagram's payload to its target, creating the
 // outbound socket (and its reply pump) on first use.
 func (n *udpNAT) forward(dg protocol.Datagram) {
+	if !n.acl.Allowed(dg.Addr) {
+		return
+	}
 	key := flowKey(dg.SessionID, dg.Addr.String())
 
 	n.mu.Lock()

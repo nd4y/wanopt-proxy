@@ -27,11 +27,38 @@ cmd/server    egress daemon (Linux/Docker)
 cmd/client    ingress proxy (Windows)
 cmd/keygen    generates PSK + server cert/pin
 internal/protocol  address codec + stream/datagram framing
-internal/tunnel    TLS (self-signed + pinning) and PSK auth
-internal/server    QUIC listener, TCP relay, UDP NAT
-internal/client    QUIC dial/auth/reconnect + datagram dispatch
+internal/tunnel    TLS (self-signed + pinning), PSK auth, tuned quic.Config
+internal/server    QUIC listener, TCP relay, UDP NAT, ACL enforcement
+internal/client    QUIC dial/auth + background reconnect + heartbeat
 internal/proxy     SOCKS5 (+UDP ASSOCIATE) and HTTP (CONNECT/forward)
+internal/acl       destination allow/deny policy (domain / IP-CIDR / port)
+internal/compress  adaptive, probe-based stream compression
+internal/metrics   Prometheus collectors + quic-go tracer (RTT/loss/cwnd)
 ```
+
+## Optimizations & features
+
+- **Access control (server)** — allow/deny destinations by domain suffix, IP/CIDR
+  and port, for both TCP and UDP. Deny wins; a non-empty allow list is a whitelist.
+- **Resilient tunnel (client)** — a background maintainer keeps one authenticated
+  connection up, reconnecting with exponential backoff. A control-stream
+  heartbeat detects dead tunnels within a few seconds. *In-flight TCP streams
+  cannot survive a tunnel drop (the remote socket lives on the server); the
+  maintainer instead makes new requests recover fast.*
+- **High-BDP throughput** — large stream/connection receive windows (16/24 MiB
+  default, tunable) keep long fat links full. *Note: quic-go v0.48 uses CUBIC
+  internally and exposes no public BBR switch, so window sizing — not the CC
+  algorithm — is the lever here.*
+- **Adaptive compression** — each direction probes its first chunk and only
+  applies DEFLATE when the sample is actually compressible, so TLS/video/archives
+  pass through untouched (no wasted CPU, no expansion).
+- **Metrics & 0-RTT** — Prometheus `/metrics` exposes per-tunnel RTT, congestion
+  window, packet loss, byte counters and stream/reconnect stats. 0-RTT session
+  resumption speeds reconnects; for replay safety, auth and proxy traffic are
+  never sent as 0-RTT early data.
+- **HTTP/3 camouflage** — ALPN defaults to `h3`; run the server on `:443` so the
+  handshake is indistinguishable from HTTP/3. *(Lightweight: a determined prober
+  that speaks HTTP/3 gets no decoy site — that would need a real h3 fallback.)*
 
 ## Quick start
 
@@ -66,10 +93,8 @@ GOOS=windows GOARCH=amd64  go build -o bin/wanopt-client.exe ./cmd/client
 
 ## Roadmap / possible improvements
 
-- BBR congestion control tuning for high-BDP links.
-- 0-RTT session resumption (guarded against replay for non-idempotent use).
-- Adaptive, content-type-aware compression.
-- Access-control lists (allow/deny destinations) on the server.
-- Prometheus metrics (per-stream RTT, loss, throughput).
-- HTTP/3 (`:443`, ALPN `h3`) camouflage option for DPI-heavy networks.
+- BBR congestion control once quic-go exposes a public selector.
+- HTTP keep-alive on the plain-HTTP forward path (currently one request/conn).
+- True HTTP/3 decoy site for full DPI camouflage.
 - MASQUE / CONNECT-UDP (RFC 9298) compatibility mode.
+- Per-destination ACL metrics and structured audit logging.

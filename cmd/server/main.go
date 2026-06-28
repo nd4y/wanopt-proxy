@@ -11,7 +11,9 @@ import (
 	"syscall"
 	"time"
 
+	"wanopt/internal/acl"
 	"wanopt/internal/config"
+	"wanopt/internal/metrics"
 	"wanopt/internal/server"
 	"wanopt/internal/tunnel"
 )
@@ -47,11 +49,39 @@ func main() {
 	}
 	log.Info("server certificate pin (copy into client config)", "pin", pin)
 
-	idle := time.Duration(cfg.IdleTimeoutSec) * time.Second
-	srv := server.New(psk, cert, idle, log)
+	policy, err := acl.New(cfg.ACL.Allow, cfg.ACL.Deny, cfg.ACL.AllowPorts, cfg.ACL.DenyPorts)
+	if err != nil {
+		log.Error("acl", "err", err)
+		os.Exit(1)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	var m *metrics.Metrics
+	if cfg.MetricsListen != "" {
+		m = metrics.New("server")
+		go func() {
+			if err := m.Serve(ctx, cfg.MetricsListen); err != nil {
+				log.Error("metrics server", "err", err)
+			}
+		}()
+		log.Info("metrics listening", "addr", cfg.MetricsListen)
+	}
+
+	srv := server.New(server.Options{
+		PSK:                 psk,
+		Cert:                cert,
+		ALPN:                cfg.ALPNOrDefault(),
+		IdleTimeout:         time.Duration(cfg.IdleTimeoutSec) * time.Second,
+		ACL:                 policy,
+		Allow0RTT:           cfg.Allow0RTT,
+		Compression:         cfg.Compression,
+		Metrics:             m,
+		MaxStreamRecvWindow: uint64(cfg.MaxStreamRecvWindowMB) << 20,
+		MaxConnRecvWindow:   uint64(cfg.MaxConnRecvWindowMB) << 20,
+		Log:                 log,
+	})
 	if err := srv.ListenAndServe(ctx, cfg.Listen); err != nil && ctx.Err() == nil {
 		log.Error("server stopped", "err", err)
 		os.Exit(1)

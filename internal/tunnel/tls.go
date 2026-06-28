@@ -23,8 +23,10 @@ import (
 	"time"
 )
 
-// ALPN identifies our protocol during the TLS handshake.
-const ALPN = "wanopt/1"
+// DefaultALPN is used when none is configured. It is set to "h3" so the
+// handshake is indistinguishable from HTTP/3 on the wire (lightweight DPI
+// camouflage). Client and server must agree on the value.
+const DefaultALPN = "h3"
 
 // SPKIPin returns the base64-encoded SHA-256 of a certificate's
 // SubjectPublicKeyInfo — the value clients pin. This is stable across cert
@@ -100,22 +102,24 @@ func EncodeCertPEM(cert tls.Certificate) (certPEM, keyPEM []byte, err error) {
 	return certPEM, keyPEM, nil
 }
 
-// ServerTLSConfig builds the server-side tls.Config.
-func ServerTLSConfig(cert tls.Certificate) *tls.Config {
+// ServerTLSConfig builds the server-side tls.Config for the given ALPN.
+func ServerTLSConfig(cert tls.Certificate, alpn string) *tls.Config {
 	return &tls.Config{
 		Certificates: []tls.Certificate{cert},
 		MinVersion:   tls.VersionTLS13,
-		NextProtos:   []string{ALPN},
+		NextProtos:   []string{alpn},
 	}
 }
 
 // ClientTLSConfig builds the client-side tls.Config that skips the default PKI
-// verification and instead enforces the pinned SPKI hash.
-func ClientTLSConfig(pin string) *tls.Config {
+// verification and instead enforces the pinned SPKI hash. When sessionCache is
+// non-nil, TLS session resumption (and thus 0-RTT) becomes possible.
+func ClientTLSConfig(pin, alpn string, sessionCache tls.ClientSessionCache) *tls.Config {
 	return &tls.Config{
 		InsecureSkipVerify: true, // we verify via pinning below, not the system CA pool
 		MinVersion:         tls.VersionTLS13,
-		NextProtos:         []string{ALPN},
+		NextProtos:         []string{alpn},
+		ClientSessionCache: sessionCache,
 		VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
 			if len(rawCerts) == 0 {
 				return errors.New("tunnel: server presented no certificate")

@@ -97,8 +97,9 @@ func readSOCKSRequest(conn net.Conn) (ver, cmd byte, addr protocol.Address, err 
 }
 
 func (p *Proxy) socksConnect(ctx context.Context, conn net.Conn, addr protocol.Address) {
-	stream, err := p.c.OpenTCP(ctx, addr)
+	stream, err := p.c.OpenTCP(ctx, addr, p.c.CompressionEnabled())
 	if err != nil {
+		p.countDialErr(err)
 		writeSOCKSReply(conn, dialErrToRep(err), net.IPv4zero, 0)
 		return
 	}
@@ -106,7 +107,19 @@ func (p *Proxy) socksConnect(ctx context.Context, conn net.Conn, addr protocol.A
 	if err := writeSOCKSReply(conn, repSuccess, net.IPv4zero, 0); err != nil {
 		return
 	}
-	relay(conn, stream)
+	p.relay(conn, conn, stream)
+}
+
+// countDialErr records dial failures (other than ACL denials) in metrics.
+func (p *Proxy) countDialErr(err error) {
+	if p.m == nil {
+		return
+	}
+	var de *client.DialError
+	if errors.As(err, &de) && de.Status == protocol.StatusNotAllowed {
+		return
+	}
+	p.m.DialErrors.Inc()
 }
 
 // writeSOCKSReply writes VER REP RSV ATYP BND.ADDR BND.PORT (IPv4 bind addr).

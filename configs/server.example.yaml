@@ -1,9 +1,28 @@
 # wanopt-server configuration
-listen: ":4242"            # UDP/QUIC bind address
+listen: ":4242"                  # UDP/QUIC bind address (use ":443" for h3 camo)
 psk: "REPLACE_WITH_BASE64_PSK"   # from `wanopt-keygen`; must match the client
+alpn: "h3"                       # TLS ALPN; must match client (h3 = HTTP/3 camouflage)
+
 # Optional persistent certificate. If omitted, an ephemeral self-signed cert is
 # generated at startup and its pin is logged (the pin then changes per restart,
 # so for production generate one with `wanopt-keygen -cert`).
 cert_file: ""
 key_file: ""
+
 idle_timeout_sec: 60
+allow_0rtt: true                 # accept 0-RTT resumption (faster reconnects)
+compression: true                # enable adaptive stream compression (negotiated)
+metrics_listen: "127.0.0.1:9101" # Prometheus /metrics (empty = disabled)
+
+# Receive-window caps in MiB (0 = built-in defaults: 16/24). Raising these is the
+# main throughput lever on high bandwidth-delay-product (long/fat) WAN links.
+max_stream_recv_window_mb: 0
+max_conn_recv_window_mb: 0
+
+# Egress access control. Empty allow lists mean "any"; deny always wins.
+# Host patterns: domain (matches subdomains), or IP / CIDR.
+acl:
+  allow: []          # e.g. ["example.com", "10.0.0.0/8"]
+  deny: []           # e.g. ["169.254.169.254", "metadata.google.internal"]
+  allow_ports: []    # e.g. [80, 443, 53] (empty = any)
+  deny_ports: []     # e.g. [22, 25]

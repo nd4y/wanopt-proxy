@@ -14,6 +14,7 @@ import (
 
 	"wanopt/internal/client"
 	"wanopt/internal/config"
+	"wanopt/internal/metrics"
 	"wanopt/internal/proxy"
 )
 
@@ -30,14 +31,36 @@ func main() {
 	}
 	psk, _ := config.DecodePSK(cfg.PSK)
 
-	idle := time.Duration(cfg.IdleTimeoutSec) * time.Second
-	c := client.New(cfg.Server, psk, cfg.Pin, idle, log)
-	defer c.Close()
-	p := proxy.New(c, log)
-
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	var m *metrics.Metrics
+	if cfg.MetricsListen != "" {
+		m = metrics.New("client")
+		go func() {
+			if err := m.Serve(ctx, cfg.MetricsListen); err != nil {
+				log.Error("metrics server", "err", err)
+			}
+		}()
+		log.Info("metrics listening", "addr", cfg.MetricsListen)
+	}
+
+	c := client.New(client.Options{
+		Server:              cfg.Server,
+		PSK:                 psk,
+		Pin:                 cfg.Pin,
+		ALPN:                cfg.ALPNOrDefault(),
+		IdleTimeout:         time.Duration(cfg.IdleTimeoutSec) * time.Second,
+		Enable0RTT:          cfg.Enable0RTT,
+		Compression:         cfg.Compression,
+		Metrics:             m,
+		MaxStreamRecvWindow: uint64(cfg.MaxStreamRecvWindowMB) << 20,
+		MaxConnRecvWindow:   uint64(cfg.MaxConnRecvWindowMB) << 20,
+		Log:                 log,
+	})
+	go c.Run(ctx) // background connection maintainer (dial + reconnect with backoff)
+
+	p := proxy.New(c, log)
 	errCh := make(chan error, 2)
 	if cfg.SOCKSListen != "" {
 		go func() { errCh <- p.ServeSOCKS(ctx, cfg.SOCKSListen) }()

@@ -62,8 +62,9 @@ func (p *Proxy) httpConnect(ctx context.Context, conn net.Conn, br *bufio.Reader
 		io.WriteString(conn, "HTTP/1.1 400 Bad Request\r\n\r\n")
 		return
 	}
-	stream, err := p.c.OpenTCP(ctx, addr)
+	stream, err := p.c.OpenTCP(ctx, addr, p.c.CompressionEnabled())
 	if err != nil {
+		p.countDialErr(err)
 		io.WriteString(conn, "HTTP/1.1 502 Bad Gateway\r\n\r\n")
 		return
 	}
@@ -72,10 +73,7 @@ func (p *Proxy) httpConnect(ctx context.Context, conn net.Conn, br *bufio.Reader
 		return
 	}
 	// br may hold bytes the client already sent; read the local side through it.
-	done := make(chan struct{}, 2)
-	go func() { io.Copy(stream, br); stream.Close(); done <- struct{}{} }()
-	go func() { io.Copy(conn, stream); done <- struct{}{} }()
-	<-done
+	p.relay(br, conn, stream)
 }
 
 // httpForward forwards a plain (absolute-URI) HTTP request to the origin server
@@ -90,8 +88,11 @@ func (p *Proxy) httpForward(ctx context.Context, conn net.Conn, br *bufio.Reader
 		io.WriteString(conn, "HTTP/1.1 400 Bad Request\r\n\r\n")
 		return
 	}
-	stream, err := p.c.OpenTCP(ctx, addr)
+	// Compression is skipped on the forward path: the request is written with
+	// req.Write, which would need symmetric wrapping to compress safely.
+	stream, err := p.c.OpenTCP(ctx, addr, false)
 	if err != nil {
+		p.countDialErr(err)
 		io.WriteString(conn, "HTTP/1.1 502 Bad Gateway\r\n\r\n")
 		return
 	}
