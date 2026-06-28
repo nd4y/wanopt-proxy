@@ -1,0 +1,9 @@
+services:
+  wanopt-server:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "4242:4242/udp"
+    volumes:
+      - ./configs:/etc/wanopt:ro
+    command: ["-config", "/etc/wanopt/server.yaml"]

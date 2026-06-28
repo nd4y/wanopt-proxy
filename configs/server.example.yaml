@@ -1,0 +1,9 @@
+# wanopt-server configuration
+listen: ":4242"            # UDP/QUIC bind address
+psk: "REPLACE_WITH_BASE64_PSK"   # from `wanopt-keygen`; must match the client
+# Optional persistent certificate. If omitted, an ephemeral self-signed cert is
+# generated at startup and its pin is logged (the pin then changes per restart,
+# so for production generate one with `wanopt-keygen -cert`).
+cert_file: ""
+key_file: ""
+idle_timeout_sec: 60

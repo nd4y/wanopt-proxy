@@ -1,0 +1,7 @@
+# wanopt-client configuration
+server: "your.server.example:4242"   # QUIC server host:port
+psk: "REPLACE_WITH_BASE64_PSK"        # from `wanopt-keygen`; must match server
+pin: "REPLACE_WITH_SERVER_SPKI_PIN"   # printed by the server at startup
+socks_listen: "127.0.0.1:1080"        # local SOCKS5 proxy (empty to disable)
+http_listen: "127.0.0.1:8080"         # local HTTP proxy (empty to disable)
+idle_timeout_sec: 60
