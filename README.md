@@ -34,6 +34,7 @@ internal/proxy     SOCKS5 (+UDP ASSOCIATE) and HTTP (CONNECT/forward)
 internal/acl       destination allow/deny policy (domain / IP-CIDR / port)
 internal/compress  adaptive, probe-based stream compression
 internal/metrics   Prometheus collectors + quic-go tracer (RTT/loss/cwnd)
+internal/decoy     HTTP/3 cover site (builtin file-cloud / proxy / dir)
 ```
 
 ## Optimizations & features
@@ -56,9 +57,14 @@ internal/metrics   Prometheus collectors + quic-go tracer (RTT/loss/cwnd)
   window, packet loss, byte counters and stream/reconnect stats. 0-RTT session
   resumption speeds reconnects; for replay safety, auth and proxy traffic are
   never sent as 0-RTT early data.
-- **HTTP/3 camouflage** — ALPN defaults to `h3`; run the server on `:443` so the
-  handshake is indistinguishable from HTTP/3. *(Lightweight: a determined prober
-  that speaks HTTP/3 gets no decoy site — that would need a real h3 fallback.)*
+- **Full HTTP/3 camouflage + decoy site** — the server *is* a real HTTP/3 server.
+  Ordinary requests (browsers, scanners, active probers) are served a believable
+  self-hosted file-cloud login site ("CloudVault"); the decoy is configurable
+  (`builtin` / reverse-`proxy` to a real site / static `dir` / `off`). Tunnel
+  streams are hidden behind a reserved HTTP/3 frame type and routed via a
+  `StreamHijacker`, and the client performs a genuine h3 SETTINGS handshake — so
+  the tunnel and a real file-cloud are indistinguishable to any prober. Run on
+  `:443` with ALPN `h3` for a complete cover.
 
 ## Quick start
 
@@ -95,6 +101,6 @@ GOOS=windows GOARCH=amd64  go build -o bin/wanopt-client.exe ./cmd/client
 
 - BBR congestion control once quic-go exposes a public selector.
 - HTTP keep-alive on the plain-HTTP forward path (currently one request/conn).
-- True HTTP/3 decoy site for full DPI camouflage.
 - MASQUE / CONNECT-UDP (RFC 9298) compatibility mode.
 - Per-destination ACL metrics and structured audit logging.
+- Richer decoy (multi-page app, ETags/range support) for deeper realism.

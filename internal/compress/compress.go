@@ -15,9 +15,9 @@ const (
 	markerRaw   byte = 0
 	markerFlate byte = 1
 
-	probeSize      = 32 * 1024 // bytes sampled to estimate compressibility
-	compressIfPct  = 90        // use DEFLATE only if sample shrinks below this %
-	flateLevel     = flate.DefaultCompression
+	probeSize     = 32 * 1024 // bytes sampled to estimate compressibility
+	compressIfPct = 90        // use DEFLATE only if sample shrinks below this %
+	flateLevel    = flate.DefaultCompression
 )
 
 // Copy streams src->dst, transparently compressing when the data looks

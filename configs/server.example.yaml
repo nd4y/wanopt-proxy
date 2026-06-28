@@ -19,6 +19,15 @@ metrics_listen: "127.0.0.1:9101" # Prometheus /metrics (empty = disabled)
 max_stream_recv_window_mb: 0
 max_conn_recv_window_mb: 0
 
+# Decoy / camouflage. The server is a real HTTP/3 server: any ordinary request
+# (browser, scanner, active prober) gets this cover site, while tunnel traffic is
+# hidden behind a reserved HTTP/3 frame type. mode: builtin | proxy | dir | off.
+decoy:
+  mode: "builtin"            # embedded self-hosted file-cloud login site
+  site_name: "CloudVault"    # branding for the builtin site
+  upstream: ""               # mode=proxy: reverse-proxy to this URL instead
+  dir: ""                    # mode=dir: serve static files from this directory
+
 # Egress access control. Empty allow lists mean "any"; deny always wins.
 # Host patterns: domain (matches subdomains), or IP / CIDR.
 acl:

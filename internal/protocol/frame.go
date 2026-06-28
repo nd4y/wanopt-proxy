@@ -9,6 +9,18 @@ import (
 // Protocol version byte, bumped on incompatible framing changes.
 const Version byte = 0x01
 
+// MagicFrameType is written by the client as the very first HTTP/3 "frame type"
+// varint on every tunnel stream. It is an unregistered frame type, so the
+// server's HTTP/3 layer treats such streams as unknown and routes them to our
+// StreamHijacker instead of parsing them as HTTP requests. ("wanopt" in ASCII.)
+const MagicFrameType uint64 = 0x77616e6f7074
+
+// Tunnel stream kinds, written as a single byte right after MagicFrameType.
+const (
+	KindControl byte = 0x01 // authentication + heartbeat
+	KindProxy   byte = 0x02 // a single proxied TCP connection
+)
+
 // Stream commands (first byte of the command after Version on a proxy stream).
 const (
 	CmdTCPConnect byte = 0x01

@@ -1,6 +1,9 @@
-// Package server implements the egress side of the tunnel: it accepts QUIC
-// connections, authenticates them, enforces an access-control policy, and
-// relays TCP streams and UDP datagrams out to their real destinations.
+// Package server implements the egress side of the tunnel. To outside observers
+// it is an ordinary HTTP/3 server that hosts a self-hosted file-cloud site (the
+// decoy). Tunnel clients hide their streams behind an unregistered HTTP/3 frame
+// type, which the server's StreamHijacker routes to the relay; every other
+// request is served by the decoy handler. This makes the tunnel and a real
+// HTTP/3 site indistinguishable to a prober.
 package server
 
 import (
@@ -10,9 +13,12 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"net/http"
+	"sync"
 	"time"
 
 	"github.com/quic-go/quic-go"
+	"github.com/quic-go/quic-go/http3"
 
 	"wanopt/internal/acl"
 	"wanopt/internal/compress"
@@ -31,16 +37,21 @@ type Options struct {
 	Allow0RTT           bool
 	Compression         bool
 	Metrics             *metrics.Metrics
+	Decoy               http.Handler
 	MaxStreamRecvWindow uint64
 	MaxConnRecvWindow   uint64
 	Log                 *slog.Logger
 }
 
-// Server relays authenticated tunnel traffic to the internet.
+// Server relays authenticated tunnel traffic and fronts a decoy site.
 type Server struct {
 	opt     Options
 	tlsConf *tls.Config
+	h3      *http3.Server
 	log     *slog.Logger
+
+	mu     sync.Mutex
+	states map[quic.ConnectionTracingID]*connState
 }
 
 // New builds a Server from Options.
@@ -51,11 +62,18 @@ func New(opt Options) *Server {
 	if opt.ALPN == "" {
 		opt.ALPN = tunnel.DefaultALPN
 	}
-	return &Server{
+	s := &Server{
 		opt:     opt,
 		tlsConf: tunnel.ServerTLSConfig(opt.Cert, opt.ALPN),
 		log:     opt.Log,
+		states:  make(map[quic.ConnectionTracingID]*connState),
 	}
+	s.h3 = &http3.Server{
+		Handler:         opt.Decoy,
+		EnableDatagrams: false, // we own the connection's datagrams for UDP relay
+		StreamHijacker:  s.hijack,
+	}
+	return s
 }
 
 func (s *Server) quicConfig() *quic.Config {
@@ -97,7 +115,6 @@ func (s *Server) ListenAndServe(ctx context.Context, addr string) error {
 	}
 }
 
-// listen returns an accept function abstracting over the early/normal listener.
 func (s *Server) listen(addr string, conf *quic.Config) (func(context.Context) (quic.Connection, error), func(), error) {
 	if s.opt.Allow0RTT {
 		ln, err := quic.ListenAddrEarly(addr, s.tlsConf, conf)
@@ -105,8 +122,7 @@ func (s *Server) listen(addr string, conf *quic.Config) (func(context.Context) (
 			return nil, nil, err
 		}
 		return func(ctx context.Context) (quic.Connection, error) {
-			c, err := ln.Accept(ctx)
-			return c, err // EarlyConnection satisfies Connection
+			return ln.Accept(ctx)
 		}, func() { ln.Close() }, nil
 	}
 	ln, err := quic.ListenAddr(addr, s.tlsConf, conf)
@@ -116,46 +132,108 @@ func (s *Server) listen(addr string, conf *quic.Config) (func(context.Context) (
 	return ln.Accept, func() { ln.Close() }, nil
 }
 
+// handleConn registers per-connection state, starts the UDP datagram pump, and
+// hands the connection to the HTTP/3 server (which serves the decoy for normal
+// requests and calls our StreamHijacker for tunnel streams).
 func (s *Server) handleConn(ctx context.Context, conn quic.Connection) {
-	peer := conn.RemoteAddr().String()
-	defer conn.CloseWithError(0, "")
-
-	ctrl, err := conn.AcceptStream(ctx)
-	if err != nil {
+	tid, ok := conn.Context().Value(quic.ConnectionTracingKey).(quic.ConnectionTracingID)
+	if !ok {
+		conn.CloseWithError(0, "")
 		return
 	}
-	tlsState := conn.ConnectionState().TLS
+	cs := &connState{s: s, conn: conn, authed: make(chan struct{}), log: s.log}
+	cs.nat = newUDPNAT(conn, s.opt.ACL, s.log)
+
+	s.mu.Lock()
+	s.states[tid] = cs
+	s.mu.Unlock()
+	defer func() {
+		s.mu.Lock()
+		delete(s.states, tid)
+		s.mu.Unlock()
+		cs.nat.close()
+		conn.CloseWithError(0, "")
+	}()
+
+	go s.serveDatagrams(ctx, conn, cs.nat)
+	// ServeQUICConn blocks until the connection is closed.
+	s.h3.ServeQUICConn(conn)
+}
+
+func (s *Server) lookup(tid quic.ConnectionTracingID) *connState {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.states[tid]
+}
+
+// hijack is the http3.Server StreamHijacker. Streams whose first frame type is
+// our magic value are tunnel streams; everything else is left to HTTP/3.
+func (s *Server) hijack(ft http3.FrameType, tid quic.ConnectionTracingID, str quic.Stream, _ error) (bool, error) {
+	if uint64(ft) != protocol.MagicFrameType {
+		return false, nil
+	}
+	cs := s.lookup(tid)
+	if cs == nil {
+		str.CancelRead(0)
+		str.Close()
+		return true, nil
+	}
+	go cs.handleStream(str)
+	return true, nil
+}
+
+// connState is the per-connection tunnel context.
+type connState struct {
+	s        *Server
+	conn     quic.Connection
+	nat      *udpNAT
+	log      *slog.Logger
+	authed   chan struct{}
+	authOnce sync.Once
+}
+
+// handleStream reads the stream-kind preamble and dispatches.
+func (cs *connState) handleStream(str quic.Stream) {
+	var kind [1]byte
+	if _, err := io.ReadFull(str, kind[:]); err != nil {
+		str.Close()
+		return
+	}
+	switch kind[0] {
+	case protocol.KindControl:
+		cs.handleControl(str)
+	case protocol.KindProxy:
+		cs.handleProxy(str)
+	default:
+		str.Close()
+	}
+}
+
+// handleControl authenticates the connection, then echoes heartbeats.
+func (cs *connState) handleControl(str quic.Stream) {
+	defer str.Close()
+	peer := cs.conn.RemoteAddr().String()
+	tlsState := cs.conn.ConnectionState().TLS
 	exporter, err := tlsState.ExportKeyingMaterial(tunnel.ExporterLabel, nil, 32)
 	if err != nil {
-		s.log.Warn("exporter unavailable", "peer", peer, "err", err)
+		cs.log.Warn("exporter unavailable", "peer", peer, "err", err)
 		return
 	}
-	if err := tunnel.ServerAuth(ctrl, s.opt.PSK, exporter); err != nil {
-		s.log.Warn("auth rejected", "peer", peer, "err", err)
-		conn.CloseWithError(1, "auth failed")
+	if err := tunnel.ServerAuth(str, cs.s.opt.PSK, exporter); err != nil {
+		cs.log.Warn("auth rejected", "peer", peer, "err", err)
+		cs.conn.CloseWithError(1, "auth failed")
 		return
 	}
-	s.log.Info("client authenticated", "peer", peer, "0rtt", conn.ConnectionState().Used0RTT)
-	if s.opt.Metrics != nil {
-		s.opt.Metrics.Connections.Inc()
-		defer s.opt.Metrics.Connections.Dec()
-		if conn.ConnectionState().Used0RTT {
-			s.opt.Metrics.ZeroRTT.Inc()
+	cs.log.Info("client authenticated", "peer", peer, "0rtt", cs.conn.ConnectionState().Used0RTT)
+	cs.authOnce.Do(func() { close(cs.authed) })
+	if m := cs.s.opt.Metrics; m != nil {
+		m.Connections.Inc()
+		defer m.Connections.Dec()
+		if cs.conn.ConnectionState().Used0RTT {
+			m.ZeroRTT.Inc()
 		}
 	}
-
-	nat := newUDPNAT(conn, s.opt.ACL, s.log)
-	defer nat.close()
-	go s.serveDatagrams(ctx, conn, nat)
-	go heartbeatEcho(ctrl)
-
-	for {
-		stream, err := conn.AcceptStream(ctx)
-		if err != nil {
-			return
-		}
-		go s.handleStream(stream)
-	}
+	heartbeatEcho(str)
 }
 
 // heartbeatEcho replies to control-stream pings so the client can measure RTT
@@ -174,19 +252,28 @@ func heartbeatEcho(s io.ReadWriter) {
 	}
 }
 
-func (s *Server) handleStream(stream quic.Stream) {
-	defer stream.Close()
-	req, err := protocol.ReadStreamRequest(stream)
+// handleProxy waits for authentication, then relays one TCP connection.
+func (cs *connState) handleProxy(str quic.Stream) {
+	defer str.Close()
+	select {
+	case <-cs.authed:
+	case <-cs.conn.Context().Done():
+		return
+	case <-time.After(10 * time.Second):
+		return // unauthenticated proxy stream: drop
+	}
+
+	req, err := protocol.ReadStreamRequest(str)
 	if err != nil {
 		return
 	}
 	if req.Cmd != protocol.CmdTCPConnect {
-		protocol.WriteReply(stream, protocol.StatusGeneralErr, 0)
+		protocol.WriteReply(str, protocol.StatusGeneralErr, 0)
 		return
 	}
-	if !s.opt.ACL.Allowed(req.Addr) {
-		s.log.Debug("blocked by ACL", "target", req.Addr.String())
-		protocol.WriteReply(stream, protocol.StatusNotAllowed, 0)
+	if !cs.s.opt.ACL.Allowed(req.Addr) {
+		cs.log.Debug("blocked by ACL", "target", req.Addr.String())
+		protocol.WriteReply(str, protocol.StatusNotAllowed, 0)
 		return
 	}
 
@@ -196,64 +283,60 @@ func (s *Server) handleStream(stream quic.Stream) {
 	var d net.Dialer
 	remote, err := d.DialContext(dialCtx, "tcp", target)
 	if err != nil {
-		s.log.Debug("dial failed", "target", target, "err", err)
-		if s.opt.Metrics != nil {
-			s.opt.Metrics.DialErrors.Inc()
+		cs.log.Debug("dial failed", "target", target, "err", err)
+		if m := cs.s.opt.Metrics; m != nil {
+			m.DialErrors.Inc()
 		}
-		protocol.WriteReply(stream, dialStatus(err), 0)
+		protocol.WriteReply(str, dialStatus(err), 0)
 		return
 	}
 	defer remote.Close()
 
-	useComp := s.opt.Compression && req.Flags&protocol.FlagCompress != 0
+	useComp := cs.s.opt.Compression && req.Flags&protocol.FlagCompress != 0
 	var negFlags byte
 	if useComp {
 		negFlags |= protocol.FlagCompress
 	}
-	if err := protocol.WriteReply(stream, protocol.StatusOK, negFlags); err != nil {
+	if err := protocol.WriteReply(str, protocol.StatusOK, negFlags); err != nil {
 		return
 	}
-	if s.opt.Metrics != nil {
-		s.opt.Metrics.StreamsTotal.Inc()
-		s.opt.Metrics.ActiveStreams.Inc()
-		defer s.opt.Metrics.ActiveStreams.Dec()
+	if m := cs.s.opt.Metrics; m != nil {
+		m.StreamsTotal.Inc()
+		m.ActiveStreams.Inc()
+		defer m.ActiveStreams.Dec()
 	}
-
-	s.pipe(stream, remote, useComp)
+	cs.pipe(str, remote, useComp)
 }
 
-// pipe bridges the QUIC stream and the remote TCP connection. When compression
-// is negotiated, the egress (remote->client) direction is compressed and the
-// ingress (client->remote) direction is decompressed.
-func (s *Server) pipe(stream quic.Stream, remote net.Conn, useComp bool) {
+// pipe bridges the QUIC stream and the remote TCP connection, compressing the
+// egress direction and decompressing the ingress direction when negotiated.
+func (cs *connState) pipe(str quic.Stream, remote net.Conn, useComp bool) {
 	done := make(chan struct{}, 2)
-	// client -> remote
-	go func() {
+	go func() { // client -> remote
 		var n int64
 		if useComp {
-			n, _ = compress.Decopy(remote, stream)
+			n, _ = compress.Decopy(remote, str)
 		} else {
-			n, _ = io.Copy(remote, stream)
+			n, _ = io.Copy(remote, str)
 		}
 		if tc, ok := remote.(*net.TCPConn); ok {
 			tc.CloseWrite()
 		}
-		if s.opt.Metrics != nil {
-			s.opt.Metrics.AddUp(n)
+		if m := cs.s.opt.Metrics; m != nil {
+			m.AddUp(n)
 		}
 		done <- struct{}{}
 	}()
-	// remote -> client
-	go func() {
+	go func() { // remote -> client
 		var n int64
 		if useComp {
-			n, _ = compress.Copy(stream, remote)
+			n, _ = compress.Copy(str, remote)
 		} else {
-			n, _ = io.Copy(stream, remote)
+			n, _ = io.Copy(str, remote)
 		}
-		stream.Close()
-		if s.opt.Metrics != nil {
-			s.opt.Metrics.AddDown(n)
+		str.Close()
+		if m := cs.s.opt.Metrics; m != nil {
+			m.AddDown(n)
 		}
 		done <- struct{}{}
 	}()

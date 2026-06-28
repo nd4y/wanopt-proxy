@@ -18,6 +18,16 @@ type ACL struct {
 	DenyPorts  []int    `yaml:"deny_ports"`
 }
 
+// Decoy configures the cover website served to non-tunnel HTTP/3 requests.
+type Decoy struct {
+	// Mode: "builtin" (embedded file-cloud site), "proxy" (reverse-proxy to
+	// Upstream), "dir" (serve Dir), or "off" (return 404). Default: builtin.
+	Mode     string `yaml:"mode"`
+	Upstream string `yaml:"upstream"`  // mode=proxy
+	Dir      string `yaml:"dir"`       // mode=dir
+	SiteName string `yaml:"site_name"` // mode=builtin branding
+}
+
 // Server holds server-side settings.
 type Server struct {
 	// Listen is the UDP address the QUIC listener binds to, e.g. ":4242"
@@ -35,6 +45,8 @@ type Server struct {
 	IdleTimeoutSec int `yaml:"idle_timeout_sec"`
 	// ACL restricts which destinations the server will dial.
 	ACL ACL `yaml:"acl"`
+	// Decoy is the cover site shown to ordinary HTTP/3 requests (camouflage).
+	Decoy Decoy `yaml:"decoy"`
 	// Allow0RTT enables 0-RTT connection resumption.
 	Allow0RTT bool `yaml:"allow_0rtt"`
 	// Compression enables adaptive stream compression (negotiated per stream).

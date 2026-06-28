@@ -15,12 +15,15 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"log/slog"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/quic-go/quic-go"
+	"github.com/quic-go/quic-go/quicvarint"
 
 	"wanopt/internal/metrics"
 	"wanopt/internal/protocol"
@@ -160,7 +163,14 @@ func (c *Client) dialAuth(ctx context.Context) (quic.Connection, quic.Stream, er
 			return nil, nil, dialCtx.Err()
 		}
 	}
-	ctrl, err := conn.OpenStreamSync(dialCtx)
+	// Present ourselves as a genuine HTTP/3 client (send a SETTINGS control
+	// stream and drain the server's), so the connection is indistinguishable
+	// from a real h3 session to anyone inspecting it.
+	if err := c.h3Handshake(dialCtx, conn); err != nil {
+		conn.CloseWithError(0, "")
+		return nil, nil, err
+	}
+	ctrl, err := openTunnelStream(dialCtx, conn, protocol.KindControl)
 	if err != nil {
 		conn.CloseWithError(0, "")
 		return nil, nil, err
@@ -180,6 +190,56 @@ func (c *Client) dialAuth(ctx context.Context) (quic.Connection, quic.Stream, er
 		c.opt.Metrics.ZeroRTT.Inc()
 	}
 	return conn, ctrl, nil
+}
+
+// h3Handshake opens the client's HTTP/3 control stream with an (empty) SETTINGS
+// frame and starts draining the server's unidirectional streams. This makes the
+// client look like an ordinary HTTP/3 client to the server's h3 layer (and to
+// any observer), which is required for the camouflage to hold.
+func (c *Client) h3Handshake(ctx context.Context, conn quic.Connection) error {
+	ctrl, err := conn.OpenUniStreamSync(ctx)
+	if err != nil {
+		return err
+	}
+	buf := quicvarint.Append(nil, 0x00) // unidirectional stream type: control
+	buf = quicvarint.Append(buf, 0x04)  // frame type: SETTINGS
+	buf = quicvarint.Append(buf, 0x00)  // settings payload length: 0
+	if _, err := ctrl.Write(buf); err != nil {
+		return err
+	}
+	// Hold the control stream open and drain inbound uni streams for the life
+	// of the connection.
+	go func() {
+		<-conn.Context().Done()
+		runtime.KeepAlive(ctrl)
+	}()
+	go func() {
+		for {
+			str, err := conn.AcceptUniStream(context.Background())
+			if err != nil {
+				return
+			}
+			go io.Copy(io.Discard, str)
+		}
+	}()
+	return nil
+}
+
+// openTunnelStream opens a bidirectional stream and writes the tunnel preamble:
+// the magic HTTP/3 frame type followed by the stream kind. The server's
+// StreamHijacker recognises the magic value and routes the stream to the relay.
+func openTunnelStream(ctx context.Context, conn quic.Connection, kind byte) (quic.Stream, error) {
+	str, err := conn.OpenStreamSync(ctx)
+	if err != nil {
+		return nil, err
+	}
+	buf := quicvarint.Append(nil, protocol.MagicFrameType)
+	buf = append(buf, kind)
+	if _, err := str.Write(buf); err != nil {
+		str.Close()
+		return nil, err
+	}
+	return str, nil
 }
 
 // runHeartbeat pings the server over the control stream and tears the
@@ -266,7 +326,7 @@ func (c *Client) OpenTCP(ctx context.Context, target protocol.Address, wantCompr
 	if err != nil {
 		return nil, err
 	}
-	stream, err := conn.OpenStreamSync(ctx)
+	stream, err := openTunnelStream(ctx, conn, protocol.KindProxy)
 	if err != nil {
 		return nil, err
 	}

@@ -13,6 +13,7 @@ import (
 
 	"wanopt/internal/acl"
 	"wanopt/internal/config"
+	"wanopt/internal/decoy"
 	"wanopt/internal/metrics"
 	"wanopt/internal/server"
 	"wanopt/internal/tunnel"
@@ -55,6 +56,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	decoyHandler, err := decoy.Handler(decoy.Config{
+		Enabled:  cfg.Decoy.Mode != "off",
+		Mode:     cfg.Decoy.Mode,
+		Upstream: cfg.Decoy.Upstream,
+		Dir:      cfg.Decoy.Dir,
+		SiteName: cfg.Decoy.SiteName,
+	})
+	if err != nil {
+		log.Error("decoy", "err", err)
+		os.Exit(1)
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -78,6 +91,7 @@ func main() {
 		Allow0RTT:           cfg.Allow0RTT,
 		Compression:         cfg.Compression,
 		Metrics:             m,
+		Decoy:               decoyHandler,
 		MaxStreamRecvWindow: uint64(cfg.MaxStreamRecvWindowMB) << 20,
 		MaxConnRecvWindow:   uint64(cfg.MaxConnRecvWindowMB) << 20,
 		Log:                 log,
