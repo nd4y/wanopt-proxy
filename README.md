@@ -1,5 +1,7 @@
 # wanopt-proxy
 
+🇬🇧 **English** | [🇷🇺 Русский](README.ru.md)
+
 A WAN optimizer built on **QUIC**. The client (Windows) exposes a local
 **SOCKS5 / HTTP** proxy; traffic is multiplexed over a single authenticated
 QUIC tunnel and egresses from the server (Linux / Docker).
