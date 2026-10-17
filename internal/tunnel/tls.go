@@ -18,14 +18,13 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
-	"fmt"
+
 	"math/big"
 	"time"
 )
 
-// DefaultALPN is used when none is configured. It is set to "h3" so the
-// handshake is indistinguishable from HTTP/3 on the wire (lightweight DPI
-// camouflage). Client and server must agree on the value.
+// DefaultALPN negotiates HTTP/3, which carries the tunnel's CONNECT requests.
+// Client and server must agree on the value.
 const DefaultALPN = "h3"
 
 // SPKIPin returns the base64-encoded SHA-256 of a certificate's
@@ -44,7 +43,10 @@ func GenerateSelfSigned() (tls.Certificate, string, error) {
 	if err != nil {
 		return tls.Certificate{}, "", err
 	}
-	serial, _ := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		return tls.Certificate{}, "", err
+	}
 	tmpl := x509.Certificate{
 		SerialNumber:          serial,
 		Subject:               pkix.Name{CommonName: "wanopt"},
@@ -113,23 +115,19 @@ func ServerTLSConfig(cert tls.Certificate, alpn string) *tls.Config {
 
 // ClientTLSConfig builds the client-side tls.Config that skips the default PKI
 // verification and instead enforces the pinned SPKI hash. When sessionCache is
-// non-nil, TLS session resumption (and thus 0-RTT) becomes possible.
+// non-nil, ordinary TLS session resumption becomes possible; early data stays disabled.
 func ClientTLSConfig(pin, alpn string, sessionCache tls.ClientSessionCache) *tls.Config {
 	return &tls.Config{
-		InsecureSkipVerify: true, // we verify via pinning below, not the system CA pool
+		InsecureSkipVerify: true, // VerifyConnection enforces the configured pin, including resumed sessions.
 		MinVersion:         tls.VersionTLS13,
 		NextProtos:         []string{alpn},
 		ClientSessionCache: sessionCache,
-		VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
-			if len(rawCerts) == 0 {
+		VerifyConnection: func(state tls.ConnectionState) error {
+			if len(state.PeerCertificates) == 0 {
 				return errors.New("tunnel: server presented no certificate")
 			}
-			cert, err := x509.ParseCertificate(rawCerts[0])
-			if err != nil {
-				return err
-			}
-			if got := SPKIPin(cert); got != pin {
-				return fmt.Errorf("tunnel: server pin mismatch (got %s)", got)
+			if SPKIPin(state.PeerCertificates[0]) != pin {
+				return errors.New("tunnel: server pin mismatch")
 			}
 			return nil
 		},

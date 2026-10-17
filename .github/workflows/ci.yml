@@ -1,0 +1,61 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main, 'feature/**']
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+      - run: go mod verify
+      - run: go vet ./...
+      - run: go test ./... -count=1 -timeout=3m
+      - if: runner.os == 'Linux'
+        run: go test -race ./... -count=1 -timeout=5m
+      - if: runner.os == 'Linux'
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+      - if: runner.os == 'Linux'
+        run: |
+          go test ./internal/protocol -run '^$' -fuzz '^FuzzAddress$' -fuzztime=10s -parallel=2
+          go test ./internal/protocol -run '^$' -fuzz '^FuzzDatagram$' -fuzztime=10s -parallel=2
+          go test ./internal/compress -run '^$' -fuzz '^FuzzDecopy$' -fuzztime=10s -parallel=2
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+      - name: Build release targets
+        env:
+          CGO_ENABLED: '0'
+        run: |
+          mkdir -p bin
+          GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags='-s -w -buildid=' -o bin/wanopt-server-linux-amd64 ./cmd/server
+          GOOS=windows GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags='-s -w -buildid=' -o bin/wanopt-client-windows-amd64.exe ./cmd/client
+          go build -trimpath -buildvcs=false -ldflags='-s -w -buildid=' -o bin/wanopt-keygen ./cmd/keygen
+      - run: docker build -t wanopt-server:ci .
+      - name: Exercise nonroot read-only container and restart
+        env:
+          WANOPT_DOCKER_IMAGE: wanopt-server:ci
+        run: go test ./internal/integration -run TestDockerImage -count=1 -timeout=60s
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: binaries
+          path: bin/
+          retention-days: 7

@@ -1,5 +1,4 @@
-// Command wanopt-keygen generates a fresh PSK and a server certificate, printing
-// the values needed to fill in server.yaml and client.yaml.
+// Command wanopt-keygen generates a PSK and optionally a persistent certificate.
 package main
 
 import (
@@ -7,36 +6,67 @@ import (
 	"encoding/base64"
 	"flag"
 	"fmt"
+	"io"
 	"os"
-
+	"path/filepath"
 	"wanopt/internal/tunnel"
 )
 
 func main() {
-	writeCert := flag.Bool("cert", false, "also write server cert.pem/key.pem and print the pin")
-	flag.Parse()
-
-	psk := make([]byte, 32)
-	if _, err := rand.Read(psk); err != nil {
-		fmt.Fprintln(os.Stderr, "rand:", err)
+	if err := run(os.Args[1:], os.Stdout); err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	fmt.Println("psk:", base64.StdEncoding.EncodeToString(psk))
-
+}
+func run(args []string, out io.Writer) error {
+	flags := flag.NewFlagSet("wanopt-keygen", flag.ContinueOnError)
+	writeCert := flags.Bool("cert", false, "write a persistent cert.pem/key.pem pair (never overwrite)")
+	dir := flags.String("out", ".", "existing output directory for certificate and private key")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	psk := make([]byte, 32)
+	if _, err := rand.Read(psk); err != nil {
+		return err
+	}
 	if *writeCert {
 		cert, pin, err := tunnel.GenerateSelfSigned()
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "cert:", err)
-			os.Exit(1)
+			return err
 		}
 		certPEM, keyPEM, err := tunnel.EncodeCertPEM(cert)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "encode:", err)
-			os.Exit(1)
+			return err
 		}
-		os.WriteFile("cert.pem", certPEM, 0o600)
-		os.WriteFile("key.pem", keyPEM, 0o600)
-		fmt.Println("pin:", pin)
-		fmt.Println("wrote cert.pem and key.pem")
+		keyPath, certPath := filepath.Join(*dir, "key.pem"), filepath.Join(*dir, "cert.pem")
+		if err := writeExclusive(keyPath, keyPEM); err != nil {
+			return err
+		}
+		if err := writeExclusive(certPath, certPEM); err != nil {
+			os.Remove(keyPath)
+			return err
+		}
+		fmt.Fprintln(out, "pin:", pin)
+		fmt.Fprintln(out, "wrote", certPath, "and", keyPath)
 	}
+	_, err := fmt.Fprintln(out, "psk:", base64.StdEncoding.EncodeToString(psk))
+	return err
+}
+func writeExclusive(path string, data []byte) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		return err
+	}
+	n, err := f.Write(data)
+	closeErr := f.Close()
+	if err == nil && n != len(data) {
+		err = io.ErrShortWrite
+	}
+	if err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		os.Remove(path)
+	}
+	return err
 }

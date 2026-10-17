@@ -32,7 +32,7 @@ func proof(psk, exporter []byte, who string) []byte {
 // ClientAuth runs the client side of the handshake over the control stream:
 // send the client proof, then verify the server's proof.
 func ClientAuth(rw io.ReadWriter, psk, exporter []byte) error {
-	if _, err := rw.Write(proof(psk, exporter, "client")); err != nil {
+	if err := writeProof(rw, proof(psk, exporter, "client")); err != nil {
 		return err
 	}
 	got := make([]byte, proofLen)
@@ -45,8 +45,10 @@ func ClientAuth(rw io.ReadWriter, psk, exporter []byte) error {
 	return nil
 }
 
-// ServerAuth runs the server side: verify the client proof, then send ours.
-func ServerAuth(rw io.ReadWriter, psk, exporter []byte) error {
+// ServerAuth verifies the client proof, publishes authenticated readiness, then
+// sends the server proof. Readiness must precede the reply because the peer can
+// immediately open TCP streams or send UDP after receiving it.
+func ServerAuth(rw io.ReadWriter, psk, exporter []byte, onAuthenticated func()) error {
 	got := make([]byte, proofLen)
 	if _, err := io.ReadFull(rw, got); err != nil {
 		return err
@@ -54,8 +56,19 @@ func ServerAuth(rw io.ReadWriter, psk, exporter []byte) error {
 	if !hmac.Equal(got, proof(psk, exporter, "client")) {
 		return errors.New("tunnel: client authentication failed (bad PSK?)")
 	}
-	if _, err := rw.Write(proof(psk, exporter, "server")); err != nil {
+	if onAuthenticated != nil {
+		onAuthenticated()
+	}
+	if err := writeProof(rw, proof(psk, exporter, "server")); err != nil {
 		return err
 	}
 	return nil
+}
+
+func writeProof(w io.Writer, b []byte) error {
+	n, err := w.Write(b)
+	if err == nil && n != len(b) {
+		return io.ErrShortWrite
+	}
+	return err
 }

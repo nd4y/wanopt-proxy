@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -34,10 +35,13 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	var workers sync.WaitGroup
 	var m *metrics.Metrics
 	if cfg.MetricsListen != "" {
 		m = metrics.New("client")
+		workers.Add(1)
 		go func() {
+			defer workers.Done()
 			if err := m.Serve(ctx, cfg.MetricsListen); err != nil {
 				log.Error("metrics server", "err", err)
 			}
@@ -46,35 +50,55 @@ func main() {
 	}
 
 	c := client.New(client.Options{
-		Server:              cfg.Server,
-		PSK:                 psk,
-		Pin:                 cfg.Pin,
-		ALPN:                cfg.ALPNOrDefault(),
-		IdleTimeout:         time.Duration(cfg.IdleTimeoutSec) * time.Second,
-		Enable0RTT:          cfg.Enable0RTT,
-		Compression:         cfg.Compression,
-		Metrics:             m,
-		MaxStreamRecvWindow: uint64(cfg.MaxStreamRecvWindowMB) << 20,
-		MaxConnRecvWindow:   uint64(cfg.MaxConnRecvWindowMB) << 20,
-		Log:                 log,
+		Server:                   cfg.Server,
+		PSK:                      psk,
+		HandshakeTimeout:         time.Duration(cfg.HandshakeTimeoutSec) * time.Second,
+		RequestTimeout:           time.Duration(cfg.RequestTimeoutSec) * time.Second,
+		MaxPendingRequests:       cfg.MaxPendingRequests,
+		MaxUDPSessions:           cfg.MaxUDPSessions,
+		DisableSessionResumption: cfg.DisableSessionResumption,
+		Pin:                      cfg.Pin,
+		ALPN:                     cfg.ALPNOrDefault(),
+		IdleTimeout:              time.Duration(cfg.IdleTimeoutSec) * time.Second,
+		Enable0RTT:               cfg.Enable0RTT,
+		Compression:              cfg.Compression,
+		Metrics:                  m,
+		MaxStreamRecvWindow:      uint64(cfg.MaxStreamRecvWindowMB) << 20,
+		MaxConnRecvWindow:        uint64(cfg.MaxConnRecvWindowMB) << 20,
+		Log:                      log,
 	})
-	go c.Run(ctx) // background connection maintainer (dial + reconnect with backoff)
+	workers.Add(1)
+	go func() { defer workers.Done(); c.Run(ctx) }()
 
-	p := proxy.New(c, log)
+	p := proxy.NewWithOptions(c, log, proxy.Options{
+		MaxConnections:            cfg.MaxConnections,
+		HandshakeTimeout:          time.Duration(cfg.HandshakeTimeoutSec) * time.Second,
+		IdleTimeout:               time.Duration(cfg.ProxyIdleTimeoutSec) * time.Second,
+		HTTPResponseHeaderTimeout: time.Duration(cfg.HTTPResponseHeaderTimeoutSec) * time.Second,
+		MaxHeaderBytes:            cfg.MaxHeaderBytes,
+	})
 	errCh := make(chan error, 2)
 	if cfg.SOCKSListen != "" {
-		go func() { errCh <- p.ServeSOCKS(ctx, cfg.SOCKSListen) }()
+		workers.Add(1)
+		go func() { defer workers.Done(); errCh <- p.ServeSOCKS(ctx, cfg.SOCKSListen) }()
 	}
 	if cfg.HTTPListen != "" {
-		go func() { errCh <- p.ServeHTTP(ctx, cfg.HTTPListen) }()
+		workers.Add(1)
+		go func() { defer workers.Done(); errCh <- p.ServeHTTP(ctx, cfg.HTTPListen) }()
 	}
 
+	failed := false
 	select {
 	case <-ctx.Done():
 	case err := <-errCh:
 		if err != nil {
 			log.Error("proxy stopped", "err", err)
-			os.Exit(1)
+			failed = true
 		}
+	}
+	stop()
+	workers.Wait()
+	if failed {
+		os.Exit(1)
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -71,10 +72,13 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	var workers sync.WaitGroup
 	var m *metrics.Metrics
 	if cfg.MetricsListen != "" {
 		m = metrics.New("server")
+		workers.Add(1)
 		go func() {
+			defer workers.Done()
 			if err := m.Serve(ctx, cfg.MetricsListen); err != nil {
 				log.Error("metrics server", "err", err)
 			}
@@ -83,20 +87,30 @@ func main() {
 	}
 
 	srv := server.New(server.Options{
-		PSK:                 psk,
-		Cert:                cert,
-		ALPN:                cfg.ALPNOrDefault(),
-		IdleTimeout:         time.Duration(cfg.IdleTimeoutSec) * time.Second,
-		ACL:                 policy,
-		Allow0RTT:           cfg.Allow0RTT,
-		Compression:         cfg.Compression,
-		Metrics:             m,
-		Decoy:               decoyHandler,
-		MaxStreamRecvWindow: uint64(cfg.MaxStreamRecvWindowMB) << 20,
-		MaxConnRecvWindow:   uint64(cfg.MaxConnRecvWindowMB) << 20,
-		Log:                 log,
+		PSK:                     psk,
+		HandshakeTimeout:        time.Duration(cfg.HandshakeTimeoutSec) * time.Second,
+		RequestTimeout:          time.Duration(cfg.RequestTimeoutSec) * time.Second,
+		MaxConnections:          cfg.MaxConnections,
+		MaxStreamsPerConnection: cfg.MaxStreamsPerConnection,
+		Resolver:                acl.NewResolver(policy, time.Duration(cfg.DNSTimeoutSec)*time.Second, cfg.DNSConcurrency),
+		UDP:                     server.UDPOptions{MaxFlows: cfg.UDP.MaxFlows, QueueSize: cfg.UDP.QueueSize, Workers: cfg.UDP.Workers, NewFlowsPerSecond: cfg.UDP.NewFlowsPerSecond, MaxPayload: cfg.UDP.MaxPayload, IdleTimeout: time.Duration(cfg.UDP.IdleTimeoutSec) * time.Second},
+		Cert:                    cert,
+		ALPN:                    cfg.ALPNOrDefault(),
+		IdleTimeout:             time.Duration(cfg.IdleTimeoutSec) * time.Second,
+		ACL:                     policy,
+		Allow0RTT:               cfg.Allow0RTT,
+		Compression:             cfg.Compression,
+		Metrics:                 m,
+		Decoy:                   decoyHandler,
+		MaxStreamRecvWindow:     uint64(cfg.MaxStreamRecvWindowMB) << 20,
+		MaxConnRecvWindow:       uint64(cfg.MaxConnRecvWindowMB) << 20,
+		Log:                     log,
 	})
-	if err := srv.ListenAndServe(ctx, cfg.Listen); err != nil && ctx.Err() == nil {
+	err = srv.ListenAndServe(ctx, cfg.Listen)
+	failed := err != nil && ctx.Err() == nil
+	stop()
+	workers.Wait()
+	if failed {
 		log.Error("server stopped", "err", err)
 		os.Exit(1)
 	}

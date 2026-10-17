@@ -7,19 +7,7 @@ import (
 )
 
 // Protocol version byte, bumped on incompatible framing changes.
-const Version byte = 0x01
-
-// MagicFrameType is written by the client as the very first HTTP/3 "frame type"
-// varint on every tunnel stream. It is an unregistered frame type, so the
-// server's HTTP/3 layer treats such streams as unknown and routes them to our
-// StreamHijacker instead of parsing them as HTTP requests. ("wanopt" in ASCII.)
-const MagicFrameType uint64 = 0x77616e6f7074
-
-// Tunnel stream kinds, written as a single byte right after MagicFrameType.
-const (
-	KindControl byte = 0x01 // authentication + heartbeat
-	KindProxy   byte = 0x02 // a single proxied TCP connection
-)
+const Version byte = 0x02
 
 // Stream commands (first byte of the command after Version on a proxy stream).
 const (
@@ -57,10 +45,16 @@ type StreamRequest struct {
 
 // WriteTo encodes the request (version, cmd, flags, address) in a single write.
 func (rq StreamRequest) WriteTo(w io.Writer) (int64, error) {
+	if err := rq.Addr.Validate(); err != nil {
+		return 0, err
+	}
 	buf := make([]byte, 0, 3+1+len(rq.Addr.Host)+18)
 	buf = append(buf, Version, rq.Cmd, rq.Flags)
 	buf = rq.Addr.Encode(buf)
 	n, err := w.Write(buf)
+	if err == nil && n != len(buf) {
+		err = io.ErrShortWrite
+	}
 	return int64(n), err
 }
 
@@ -82,7 +76,10 @@ func ReadStreamRequest(r io.Reader) (StreamRequest, error) {
 
 // WriteReply writes the dial status plus the negotiated flags (2 bytes).
 func WriteReply(w io.Writer, status, flags byte) error {
-	_, err := w.Write([]byte{status, flags})
+	n, err := w.Write([]byte{status, flags})
+	if err == nil && n != 2 {
+		err = io.ErrShortWrite
+	}
 	return err
 }
 
@@ -94,6 +91,11 @@ func ReadReply(r io.Reader) (status, flags byte, err error) {
 	}
 	return b[0], b[1], nil
 }
+
+// MaxUDPPayload leaves space for the largest address envelope and QUIC headers
+// within a 1200-byte UDP path. Oversize packets are dropped with metrics.
+const MaxUDPPayload = 850
+const MaxUDPDatagramSize = 1120
 
 // --- UDP datagram envelope (carried over QUIC DATAGRAM) ---
 //
@@ -120,7 +122,7 @@ type Datagram struct {
 
 // DecodeDatagram parses a UDP relay datagram.
 func DecodeDatagram(buf []byte) (Datagram, error) {
-	if len(buf) < 2 || buf[0] != Version {
+	if len(buf) < 2 || len(buf) > MaxUDPDatagramSize || buf[0] != Version {
 		return Datagram{}, errors.New("protocol: bad datagram header")
 	}
 	sid, n := binary.Uvarint(buf[1:])
@@ -133,5 +135,8 @@ func DecodeDatagram(buf []byte) (Datagram, error) {
 		return Datagram{}, err
 	}
 	off += used
+	if len(buf)-off > MaxUDPPayload {
+		return Datagram{}, errors.New("protocol: UDP payload too large")
+	}
 	return Datagram{SessionID: sid, Addr: addr, Payload: buf[off:]}, nil
 }

@@ -1,19 +1,16 @@
-// Package decoy serves a believable "cover" website for any plain HTTP/3 request
-// that reaches the tunnel server. To a browser, scanner, or active prober the
-// endpoint looks exactly like a self-hosted file-sync cloud, so the presence of
-// the tunnel cannot be inferred from ordinary HTTP behaviour.
-//
-// Three modes are supported: a built-in file-cloud login site, a reverse proxy
-// to a real upstream site, or a static directory.
+// Package decoy serves an optional HTTP/3 site. It provides no guarantee against traffic analysis or active probing.
 package decoy
 
 import (
 	"embed"
+	"errors"
 	"html/template"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strings"
+	"time"
 )
 
 //go:embed assets/index.html assets/404.html
@@ -38,10 +35,16 @@ func Handler(cfg Config) (http.Handler, error) {
 	switch cfg.Mode {
 	case "proxy":
 		u, err := url.Parse(cfg.Upstream)
-		if err != nil {
-			return nil, err
+		if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") || u.User != nil {
+			return nil, errors.New("decoy: invalid upstream URL")
 		}
-		return httputil.NewSingleHostReverseProxy(u), nil
+		transport := &http.Transport{
+			DialContext:         (&net.Dialer{Timeout: 5 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+			TLSHandshakeTimeout: 5 * time.Second, ResponseHeaderTimeout: 10 * time.Second,
+			IdleConnTimeout: 30 * time.Second, MaxIdleConns: 16, MaxIdleConnsPerHost: 16, MaxConnsPerHost: 16,
+			MaxResponseHeaderBytes: 64 << 10,
+		}
+		return &httputil.ReverseProxy{Rewrite: func(r *httputil.ProxyRequest) { r.SetURL(u); r.Out.Host = u.Host }, Transport: transport}, nil
 	case "dir":
 		return http.FileServer(http.Dir(cfg.Dir)), nil
 	default:
@@ -76,8 +79,8 @@ func builtin(siteName string) (http.Handler, error) {
 
 func (s *builtinSite) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Headers a typical self-hosted deployment behind nginx would emit.
-	w.Header().Set("Server", "nginx")
-	w.Header().Set("Alt-Svc", `h3=":443"; ma=2592000`)
+	// This is an optional site, not a network fingerprint guarantee.
+	// Do not advertise a hard-coded port when the listener is configurable.
 
 	switch {
 	case r.URL.Path == "/" || r.URL.Path == "/login":

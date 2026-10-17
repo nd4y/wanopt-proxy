@@ -1,37 +1,39 @@
-# wanopt-server configuration
-listen: ":4242"                  # UDP/QUIC bind address (use ":443" for h3 camo)
-psk: "REPLACE_WITH_BASE64_PSK"   # from `wanopt-keygen`; must match the client
-alpn: "h3"                       # TLS ALPN; must match client (h3 = HTTP/3 camouflage)
-
-# Optional persistent certificate. If omitted, an ephemeral self-signed cert is
-# generated at startup and its pin is logged (the pin then changes per restart,
-# so for production generate one with `wanopt-keygen -cert`).
-cert_file: ""
-key_file: ""
-
+# Protocol v2: upgrade both endpoints together. Compression is opt-in.
+listen: ":4242"
+psk: "REPLACE_WITH_BASE64_PSK"
+alpn: "h3"
+# Paths are relative to this configuration file. Generate once, keep stable.
+cert_file: "cert.pem"
+key_file: "key.pem"
+allow_ephemeral_cert: false
+compression: false
 idle_timeout_sec: 60
-allow_0rtt: true                 # accept 0-RTT resumption (faster reconnects)
-compression: true                # enable adaptive stream compression (negotiated)
-metrics_listen: "127.0.0.1:9101" # Prometheus /metrics (empty = disabled)
-
-# Receive-window caps in MiB (0 = built-in defaults: 16/24). Raising these is the
-# main throughput lever on high bandwidth-delay-product (long/fat) WAN links.
-max_stream_recv_window_mb: 0
-max_conn_recv_window_mb: 0
-
-# Decoy / camouflage. The server is a real HTTP/3 server: any ordinary request
-# (browser, scanner, active prober) gets this cover site, while tunnel traffic is
-# hidden behind a reserved HTTP/3 frame type. mode: builtin | proxy | dir | off.
+handshake_timeout_sec: 10
+request_timeout_sec: 15
+max_connections: 256
+max_streams_per_connection: 128
+dns_timeout_sec: 5
+dns_concurrency: 32
+max_stream_recv_window_mb: 16
+max_conn_recv_window_mb: 24
+metrics_listen: "127.0.0.1:9101"
+udp:
+  max_flows: 256
+  queue_size: 128
+  workers: 4
+  new_flows_per_second: 32
+  max_payload: 850
+  idle_timeout_sec: 60
+# Optional ordinary HTTP/3 site. No indistinguishability guarantee.
 decoy:
-  mode: "builtin"            # embedded self-hosted file-cloud login site
-  site_name: "CloudVault"    # branding for the builtin site
-  upstream: ""               # mode=proxy: reverse-proxy to this URL instead
-  dir: ""                    # mode=dir: serve static files from this directory
-
-# Egress access control. Empty allow lists mean "any"; deny always wins.
-# Host patterns: domain (matches subdomains), or IP / CIDR.
+  mode: "off" # off | builtin | proxy | dir
+  site_name: "CloudVault"
+  upstream: ""
+  dir: ""
+# Empty allow lists allow all destinations. Deny applies to resolved IPs too.
+# Set an explicit egress policy for the networks/services this server can reach.
 acl:
-  allow: []          # e.g. ["example.com", "10.0.0.0/8"]
-  deny: []           # e.g. ["169.254.169.254", "metadata.google.internal"]
-  allow_ports: []    # e.g. [80, 443, 53] (empty = any)
-  deny_ports: []     # e.g. [22, 25]
+  allow: []
+  deny: []
+  allow_ports: []
+  deny_ports: []

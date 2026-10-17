@@ -1,0 +1,8 @@
+.git
+bin
+*.exe
+**/*_test.go
+configs/*.yaml
+*.pem
+**/*.pem
+*.prof
