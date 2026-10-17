@@ -2,7 +2,9 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, 'feature/**']
+    branches: [main]
+env:
+  GOTOOLCHAIN: local
 permissions:
   contents: read
 concurrency:
