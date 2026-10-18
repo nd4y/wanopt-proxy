@@ -10,12 +10,12 @@ import (
 	"io"
 	"net"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strconv"
 	"time"
 
 	"gopkg.in/yaml.v3"
+	"wanopt/internal/safefile"
 )
 
 // ACL is a destination allow/deny policy. Empty allow lists mean "any".
@@ -393,17 +393,12 @@ func validateEndpoint(addr string, hostRequired bool) error {
 	return nil
 }
 func load(path string, dst any) error {
-	f, err := os.Open(path)
+	data, err := safefile.Read(path, 1<<20)
+	if errors.Is(err, safefile.ErrSize) {
+		return fmt.Errorf("config: file exceeds 1 MiB: %w", err)
+	}
 	if err != nil {
 		return err
-	}
-	defer f.Close()
-	data, err := io.ReadAll(io.LimitReader(f, (1<<20)+1))
-	if err != nil {
-		return err
-	}
-	if len(data) > 1<<20 {
-		return errors.New("config: file exceeds 1 MiB")
 	}
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(true)

@@ -3,33 +3,15 @@ package main
 import (
 	"context"
 	"errors"
-	"io"
 	"log/slog"
 	"os"
 	"wanopt/internal/config"
+	"wanopt/internal/safefile"
 	"wanopt/internal/server"
 	"wanopt/internal/tunnel"
 )
 
-func readCredentialFile(path string) ([]byte, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	st, err := f.Stat()
-	if err != nil {
-		return nil, err
-	}
-	if !st.Mode().IsRegular() || st.Size() > 1<<20 {
-		return nil, errors.New("credential file must be a regular file up to 1 MiB")
-	}
-	b, err := io.ReadAll(io.LimitReader(f, 1<<20+1))
-	if len(b) > 1<<20 {
-		return nil, errors.New("credential file too large")
-	}
-	return b, err
-}
+func readCredentialFile(path string) ([]byte, error) { return safefile.Read(path, 1<<20) }
 func watchCredentials(ctx context.Context, path string, current config.Server, srv *server.Server, log *slog.Logger, signals <-chan os.Signal) {
 	for {
 		select {
