@@ -417,7 +417,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		srv := &http.Server{Addr: *listen, Handler: originHandler(f), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 120 * time.Second, WriteTimeout: 120 * time.Second, IdleTimeout: 60 * time.Second}
+		srv := &http.Server{Addr: *listen, Handler: originHandler(f), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 5 * time.Minute, WriteTimeout: 5 * time.Minute, IdleTimeout: 60 * time.Second}
 		if err := srv.ListenAndServe(); err != nil {
 			panic(err)
 		}

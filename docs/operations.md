@@ -16,7 +16,7 @@ Idle HTTP streams retain codec state too. The HTTP pool therefore keeps at most 
 
 These are admission counts, not a hard aggregate memory-byte cap. QUIC receive windows, connection count, UDP sockets and application queues must also fit the host. Use a cgroup/container limit as the final host protection and size admission limits below it.
 
-A small-node starting profile, matching the scale exercised in the isolated lab:
+A small-node starting profile to validate against the actual workload:
 
 ```yaml
 max_connections: 8
