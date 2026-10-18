@@ -38,10 +38,10 @@ index 00000000..208e8f29
 +THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 diff --git a/congestion/interface.go b/congestion/interface.go
 new file mode 100644
-index 00000000..fd9de104
+index 00000000..f70a1f70
 --- /dev/null
 +++ b/congestion/interface.go
-@@ -0,0 +1,67 @@
+@@ -0,0 +1,68 @@
 +package congestion
 +
 +import (
@@ -81,6 +81,7 @@ index 00000000..fd9de104
 +	SetRTTStatsProvider(provider RTTStatsProvider)
 +	TimeUntilSend(bytesInFlight ByteCount) monotime.Time
 +	HasPacingBudget(now monotime.Time) bool
++	// bytesInFlight excludes the packet being sent, including after an idle period.
 +	OnPacketSent(sentTime monotime.Time, bytesInFlight ByteCount, packetNumber PacketNumber, bytes ByteCount, isRetransmittable bool)
 +	CanSend(bytesInFlight ByteCount) bool
 +	MaybeExitSlowStart()
@@ -154,10 +155,10 @@ index db942ac9..7566c066 100644
  	GetConfigForClient func(info *ClientInfo) (*Config, error)
 diff --git a/internal/ackhandler/cc_adapter.go b/internal/ackhandler/cc_adapter.go
 new file mode 100644
-index 00000000..98cd5926
+index 00000000..d4a8b1d7
 --- /dev/null
 +++ b/internal/ackhandler/cc_adapter.go
-@@ -0,0 +1,114 @@
+@@ -0,0 +1,118 @@
 +package ackhandler
 +
 +import (
@@ -186,6 +187,10 @@ index 00000000..98cd5926
 +}
 +
 +func (a *ccAdapter) OnPacketSent(sentTime monotime.Time, bytesInFlight protocol.ByteCount, packetNumber protocol.PacketNumber, bytes protocol.ByteCount, isRetransmittable bool) {
++	// Upstream reports post-send flight; external samplers need pre-send flight.
++	if isRetransmittable {
++		bytesInFlight = max(0, bytesInFlight-bytes)
++	}
 +	a.CC.OnPacketSent(sentTime, congestion.ByteCount(bytesInFlight), congestion.PacketNumber(packetNumber), congestion.ByteCount(bytes), isRetransmittable)
 +}
 +
@@ -332,6 +337,59 @@ index 00000000..737e7d04
 +	h.flushCongestion(1200, now)
 +	if c.least != 101 {
 +		t.Fatal("empty history watermark incorrect")
++	}
++}
+diff --git a/internal/ackhandler/cc_adapter_send_test.go b/internal/ackhandler/cc_adapter_send_test.go
+new file mode 100644
+index 00000000..4f17997e
+--- /dev/null
++++ b/internal/ackhandler/cc_adapter_send_test.go
+@@ -0,0 +1,47 @@
++package ackhandler
++
++import (
++	ext "github.com/quic-go/quic-go/congestion"
++	"github.com/quic-go/quic-go/internal/monotime"
++	"github.com/quic-go/quic-go/internal/protocol"
++	"github.com/quic-go/quic-go/internal/utils"
++	"github.com/quic-go/quic-go/internal/wire"
++	"testing"
++	"time"
++)
++
++type sendFlightController struct {
++	*eventController
++	flight []ext.ByteCount
++}
++
++func (c *sendFlightController) OnPacketSent(_ monotime.Time, n ext.ByteCount, _ ext.PacketNumber, _ ext.ByteCount, _ bool) {
++	c.flight = append(c.flight, n)
++}
++func (c *sendFlightController) MaybeExitSlowStart() {}
++func TestAdapterUsesPreSendFlightThroughRealHandler(t *testing.T) {
++	h := NewSentPacketHandler(0, 1200, utils.NewRTTStats(), &utils.ConnectionStats{}, false, false, nil, protocol.PerspectiveClient, nil, utils.DefaultLogger).(*sentPacketHandler)
++	c := &sendFlightController{eventController: &eventController{size: 1200}}
++	ConfigureCongestion(h, func(ext.ByteCount) ext.CongestionControl { return c }, 1200)
++	now := monotime.Now()
++	send := func(pn protocol.PacketNumber, size protocol.ByteCount, eliciting bool) {
++		var frames []Frame
++		if eliciting {
++			frames = []Frame{{Frame: &wire.PingFrame{}}}
++		}
++		h.SentPacket(now, pn, protocol.InvalidPacketNumber, nil, frames, protocol.Encryption1RTT, protocol.ECNNon, size, false, false)
++	}
++	send(0, 1200, true)
++	send(1, 200, false)
++	send(2, 1000, true)
++	if _, err := h.ReceivedAck(&wire.AckFrame{AckRanges: []wire.AckRange{{Smallest: 0, Largest: 2}}}, protocol.Encryption1RTT, now.Add(100*time.Millisecond)); err != nil {
++		t.Fatal(err)
++	}
++	send(3, 1300, true)
++	want := []ext.ByteCount{0, 1200, 1200, 0}
++	for i, n := range want {
++		if c.flight[i] != n {
++			t.Fatalf("packet %d: BBR received flight=%d, want pre-send %d; all=%v", i, c.flight[i], n, c.flight)
++		}
 +	}
 +}
 diff --git a/internal/ackhandler/cc_adapter_test.go b/internal/ackhandler/cc_adapter_test.go

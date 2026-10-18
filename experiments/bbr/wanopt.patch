@@ -61,11 +61,11 @@ index 0000000..208e8f2
 +THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 diff --git a/internal/congestion/NOTICE.md b/internal/congestion/NOTICE.md
 new file mode 100644
-index 0000000..b6c5a2f
+index 0000000..e35eeb6
 --- /dev/null
 +++ b/internal/congestion/NOTICE.md
 @@ -0,0 +1 @@
-+BBR/common sources adapted from HyNetworks/hysteria commit ca8fbd874fd6ca82413948de6dc5924405e103e1 (MIT), with import path changes. The wanopt port adds exact outstanding-packet history feedback, an empty-event guard, and bidirectional MTU-limit rescaling for quic-go Initial EMSGSIZE fallback, with regression tests. Original license retained. Experimental integration; upstream quic-go remains in the normal build.
++BBR/common sources adapted from HyNetworks/hysteria commit ca8fbd874fd6ca82413948de6dc5924405e103e1 (MIT), with import path changes. The wanopt port normalizes pre-send bytes-in-flight accounting and adds exact outstanding-packet history feedback, an empty-event guard, and bidirectional MTU-limit rescaling for quic-go Initial EMSGSIZE fallback, with regression tests. It also validates idle capacity after complete drain and at least three PTOs (one second minimum), clearing the stale bandwidth/window/pacer model while retaining path RTT/MTU and profile settings. Original license retained. Experimental integration; upstream quic-go remains in the normal build.
 diff --git a/internal/congestion/bbr/bandwidth.go b/internal/congestion/bbr/bandwidth.go
 new file mode 100644
 index 0000000..df96fcb
@@ -984,10 +984,10 @@ index 0000000..cbeaa74
 +}
 diff --git a/internal/congestion/bbr/bbr_sender.go b/internal/congestion/bbr/bbr_sender.go
 new file mode 100644
-index 0000000..5316b97
+index 0000000..82fecc5
 --- /dev/null
 +++ b/internal/congestion/bbr/bbr_sender.go
-@@ -0,0 +1,1107 @@
+@@ -0,0 +1,1143 @@
 +package bbr
 +
 +import (
@@ -1160,6 +1160,9 @@ index 0000000..5316b97
 +	rttStats             congestion.RTTStatsProvider
 +	clock                Clock
 +	pacer                *common.Pacer
++
++	// Set when all in-flight data drains; ACK-only traffic does not refresh it.
++	idleSince monotime.Time
 +
 +	mode bbrMode
 +
@@ -1440,6 +1443,10 @@ index 0000000..5316b97
 +	bytes congestion.ByteCount,
 +	isRetransmittable bool,
 +) {
++	if isRetransmittable {
++		b.maybeRestartAfterIdle(sentTime, bytesInFlight)
++		b.idleSince = 0
++	}
 +	b.pacer.SentPacket(sentTime, bytes)
 +
 +	b.lastSentPacket = packetNumber
@@ -1450,6 +1457,31 @@ index 0000000..5316b97
 +	}
 +
 +	b.sampler.OnPacketSent(sentTime, packetNumber, bytes, bytesInFlight, isRetransmittable)
++}
++
++// maybeRestartAfterIdle validates an idle sender before reusing its old path
++// model. Round-based bandwidth filters do not age out while only app-limited
++// keepalives are exchanged. A large old window can otherwise fill a local
++// shaping queue when the available bandwidth falls during the idle period.
++// Wait for actual drain and at least three PTOs (one second minimum), so a
++// slow active flight or a short application pause keeps its learned model.
++func (b *bbrSender) maybeRestartAfterIdle(now monotime.Time, bytesInFlight congestion.ByteCount) {
++	if bytesInFlight != 0 || b.idleSince.IsZero() || now.Sub(b.idleSince) < time.Second {
++		return
++	}
++	limit := time.Second
++	if b.rttStats != nil {
++		limit = max(limit, 3*b.rttStats.PTO(true))
++	}
++	if now.Sub(b.idleSince) < limit {
++		return
++	}
++	rtt := b.rttStats
++	fresh := newBbrSender(b.clock, b.maxDatagramSize, b.initialCongestionWindow, b.maxCongestionWindow, b.profile)
++	*b = *fresh
++	b.rttStats = rtt
++	// The constructor's bound method captures fresh, not the live receiver.
++	b.pacer = common.NewPacer(b.bandwidthForPacer)
 +}
 +
 +// CanSend implements the SendAlgorithm interface.
@@ -1553,6 +1585,10 @@ index 0000000..5316b97
 +	}
 +	for _, p := range lostPackets {
 +		b.bytesInFlight -= p.BytesLost
++	}
++
++	if b.bytesInFlight == 0 && b.idleSince.IsZero() {
++		b.idleSince = eventTime
 +	}
 +
 +	if len(ackedPackets) != 0 {
@@ -2269,6 +2305,106 @@ index 0000000..8b80f69
 +// Now gets the current time
 +func (DefaultClock) Now() monotime.Time {
 +	return monotime.Now()
++}
+diff --git a/internal/congestion/bbr/idle_restart_test.go b/internal/congestion/bbr/idle_restart_test.go
+new file mode 100644
+index 0000000..e98db14
+--- /dev/null
++++ b/internal/congestion/bbr/idle_restart_test.go
+@@ -0,0 +1,94 @@
++package bbr
++
++import (
++	"github.com/quic-go/quic-go/congestion"
++	"github.com/quic-go/quic-go/monotime"
++	"testing"
++	"time"
++)
++
++type idleRTT struct {
++	fixedRTT
++	pto time.Duration
++}
++
++func (r idleRTT) PTO(bool) time.Duration { return r.pto }
++
++func primedIdleSender(pto time.Duration) (*bbrSender, monotime.Time) {
++	b := NewBbrSender(DefaultClock{}, 1200, ProfileStandard)
++	b.SetRTTStatsProvider(idleRTT{pto: pto})
++	now := monotime.Now()
++	b.OnPacketSent(now, 0, 1, 1200, true)
++	idle := now.Add(100 * time.Millisecond)
++	b.OnCongestionEventExWithLeastUnacked(1200, idle, []congestion.AckedPacketInfo{{PacketNumber: 1, BytesAcked: 1200}}, nil, 2)
++	b.maxBandwidth.Reset(Bandwidth(1_000_000_000), b.roundTripCount)
++	b.congestionWindow = 11 << 20
++	b.pacingRate = Bandwidth(1_000_000_000)
++	b.isAtFullBandwidth = true
++	b.mode = bbrModeProbeBw
++	return b, idle
++}
++
++func TestIdleRestartDiscardsStaleBandwidthAndWindow(t *testing.T) {
++	b, idle := primedIdleSender(500 * time.Millisecond)
++	rtt := b.rttStats
++	b.SetMaxDatagramSize(1280)
++	initial, maximum := b.initialCongestionWindow, b.maxCongestionWindow
++	b.OnPacketSent(idle.Add(5*time.Second), 0, 2, 1200, true)
++	if b.GetCongestionWindow() != initial || b.bandwidthEstimate() != 0 || !b.InSlowStart() {
++		t.Fatalf("reused stale idle model: cwnd=%d bandwidth=%d startup=%t", b.GetCongestionWindow(), b.bandwidthEstimate(), b.InSlowStart())
++	}
++	if b.rttStats != rtt || b.maxDatagramSize != 1280 || b.maxCongestionWindow != maximum || b.profile != ProfileStandard || b.sampler.connectionStateMap.GetEntry(2) == nil {
++		t.Fatal("restart lost path settings or first new packet")
++	}
++	// The copied constructor's pacer callback must target the live sender.
++	b.pacingRate = Bandwidth(8_000_000_000)
++	if got := b.pacer.Budget(idle.Add(6 * time.Second)); got < 100_000 {
++		t.Fatalf("pacer bound to discarded sender: %d", got)
++	}
++}
++
++func TestIdleRestartRespectsPTOAndAckOnlyPackets(t *testing.T) {
++	for _, tc := range []struct {
++		name               string
++		gap, pto           time.Duration
++		eliciting, restart bool
++	}{
++		{"short pause", 500 * time.Millisecond, 100 * time.Millisecond, true, false},
++		{"one second floor", 999 * time.Millisecond, 100 * time.Millisecond, true, false},
++		{"floor reached", time.Second, 100 * time.Millisecond, true, true},
++		{"long RTT", 5 * time.Second, 3 * time.Second, true, false},
++		{"three PTOs", 9 * time.Second, 3 * time.Second, true, true},
++		{"ACK only", 5 * time.Second, 100 * time.Millisecond, false, false},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			b, idle := primedIdleSender(tc.pto)
++			b.OnPacketSent(idle.Add(tc.gap), 0, 2, 1200, tc.eliciting)
++			if got := b.InSlowStart(); got != tc.restart {
++				t.Fatalf("restart=%t, want %t", got, tc.restart)
++			}
++			if !tc.eliciting {
++				b.OnPacketSent(idle.Add(tc.gap+time.Millisecond), 0, 3, 1200, true)
++				if !b.InSlowStart() {
++					t.Fatal("ACK-only packet refreshed the idle clock")
++				}
++			}
++		})
++	}
++}
++
++func TestIdleRestartPreservesActiveFlightAndWaitsForDrain(t *testing.T) {
++	b, idle := primedIdleSender(100 * time.Millisecond)
++	b.OnPacketSent(idle.Add(100*time.Millisecond), 0, 2, 1200, true)
++	b.OnPacketSent(idle.Add(10*time.Second), 1200, 3, 1200, true)
++	if b.InSlowStart() || b.sampler.connectionStateMap.GetEntry(2) == nil {
++		t.Fatal("reset active in-flight state")
++	}
++	// ACKs can arrive long after the last send. That tail is not an idle period.
++	drained := idle.Add(20 * time.Second)
++	b.OnCongestionEventExWithLeastUnacked(2400, drained, []congestion.AckedPacketInfo{{PacketNumber: 2, BytesAcked: 1200}, {PacketNumber: 3, BytesAcked: 1200}}, nil, 4)
++	b.OnPacketSent(drained.Add(100*time.Millisecond), 0, 4, 1200, true)
++	if b.InSlowStart() {
++		t.Fatal("mistook slow flight drain for application idle")
++	}
 +}
 diff --git a/internal/congestion/bbr/packet_number_indexed_queue.go b/internal/congestion/bbr/packet_number_indexed_queue.go
 new file mode 100644
