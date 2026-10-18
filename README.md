@@ -188,3 +188,8 @@ experiments and do not replace a soak test on the deployment network.
 5. Update dashboards for the new RTT/loss/resumption semantics and validate your
    required UDP packet sizes. Rollback requires restoring both v1 endpoints and
    their configuration together; do not mix protocol generations.
+
+See [high-latency transport notes](docs/high-latency.md) for reviewed QUIC/BBR,
+KCP, SRT and Hysteria ideas, the HTTP compression fix, and cloud benchmark limits.
+Ordinary HTTP forwarding now honors the opt-in compression setting as well as
+SOCKS and CONNECT; it safely falls back when the server declines compression.

@@ -90,10 +90,13 @@ func (p *Proxy) httpTransport(serverCtx context.Context) (*http.Transport, func(
 			if err != nil || a.Port == 0 {
 				return nil, errors.New("proxy: invalid HTTP target")
 			}
-			s, _, err := p.dialStream(ctx, a, false)
+			s, compressed, err := p.dialStream(ctx, a, p.compressionEnabled())
 			if err != nil {
 				p.countDialErr(err)
 				return nil, err
+			}
+			if compressed {
+				s = newCompressedHTTPConn(s)
 			}
 			c := net.Conn(&idleConn{Conn: s, timeout: p.opt.IdleTimeout})
 			if p.m != nil {

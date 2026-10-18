@@ -94,3 +94,29 @@ func BenchmarkIncompressible(b *testing.B) {
 		Copy(io.Discard, bytes.NewReader(data))
 	}
 }
+
+func TestDecoderResetValidatesEveryBlock(t *testing.T) {
+	first := bytes.Repeat([]byte("first block content;"), 100)
+	last := bytes.Repeat([]byte("second block has unrelated content;"), 100)
+	for _, corrupt := range []bool{false, true} {
+		var wire bytes.Buffer
+		Copy(&wire, bytes.NewReader(first))
+		Copy(&wire, bytes.NewReader(randomData(100)))
+		offset := wire.Len()
+		Copy(&wire, bytes.NewReader(last))
+		data := wire.Bytes()
+		if corrupt {
+			binary.BigEndian.PutUint16(data[offset+1:offset+3], uint16(len(last)-1))
+		}
+		var out bytes.Buffer
+		n, err := Decopy(&out, bytes.NewReader(data))
+		expected := append(append(append([]byte{}, first...), randomData(100)...), last...)
+		if corrupt {
+			if err == nil || n != int64(len(first)+100) || !bytes.Equal(out.Bytes(), expected[:len(first)+100]) {
+				t.Fatalf("corrupt reused decoder leaked data: n=%d err=%v", n, err)
+			}
+		} else if err != nil || !bytes.Equal(out.Bytes(), expected) {
+			t.Fatalf("reset: n=%d err=%v", n, err)
+		}
+	}
+}

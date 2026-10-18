@@ -362,11 +362,21 @@ func TestConnectionAndStreamLimitsReleaseCapacity(t *testing.T) {
 		}
 	}
 	first.Close()
-	replacement, err := f.client.OpenTCP(context.Background(), target, false)
-	if err != nil {
-		t.Fatalf("closed stream did not release capacity: %v", err)
+	// Closing the client stream sends a reset asynchronously; the peer must
+	// process it before its handler releases the application admission slot.
+	releaseCtx, releaseCancel := context.WithTimeout(context.Background(), time.Second)
+	defer releaseCancel()
+	for {
+		replacement, err := f.client.OpenTCP(releaseCtx, target, false)
+		if err == nil {
+			replacement.Close()
+			break
+		}
+		if releaseCtx.Err() != nil {
+			t.Fatalf("closed stream did not release capacity: %v", err)
+		}
+		time.Sleep(time.Millisecond)
 	}
-	replacement.Close()
 }
 
 // Closing a caller-owned listener must terminate Serve even while its parent

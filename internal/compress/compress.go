@@ -46,7 +46,8 @@ func Copy(dst io.Writer, src io.Reader) (int64, error) {
 
 // CopyCounted reports uncompressed bytes after a complete block reaches dst.
 func CopyCounted(dst io.Writer, src io.Reader, onPayload func(int)) (int64, error) {
-	buf := make([]byte, blockSize)
+	frame := make([]byte, blockSize+5)
+	buf := frame[5:]
 	var compressed bytes.Buffer
 	w := encoder(&compressed)
 	defer release(w)
@@ -68,14 +69,16 @@ func CopyCounted(dst io.Writer, src io.Reader, onPayload func(int)) (int64, erro
 			if compressed.Len()*100 < n*90 {
 				mode, data = markerFlate, compressed.Bytes()
 			}
-			var header [5]byte
+			header := frame[:5]
 			header[0] = mode
 			binary.BigEndian.PutUint16(header[1:3], uint16(n))
 			binary.BigEndian.PutUint16(header[3:5], uint16(len(data)))
-			if err := writeFull(dst, header[:]); err != nil {
-				return total, err
+			// One write avoids emitting a tiny header separately on the tunnel.
+			// Raw data is already in frame; only compressed payload needs copying.
+			if mode == markerFlate {
+				copy(buf, data)
 			}
-			if err := writeFull(dst, data); err != nil {
+			if err := writeFull(dst, frame[:5+len(data)]); err != nil {
 				return total, err
 			}
 			total += int64(n)
@@ -103,6 +106,13 @@ func Decopy(dst io.Writer, src io.Reader) (int64, error) {
 	encoded := make([]byte, blockSize)
 	decoded := make([]byte, blockSize+1)
 	var total int64
+	var input bytes.Reader
+	var reader io.ReadCloser
+	defer func() {
+		if reader != nil {
+			reader.Close()
+		}
+	}()
 	var header [5]byte
 	for {
 		n, err := io.ReadFull(src, header[:])
@@ -126,11 +136,14 @@ func Decopy(dst io.Writer, src io.Reader) (int64, error) {
 				return total, errors.New("compress: raw length mismatch")
 			}
 		case markerFlate:
-			input := bytes.NewReader(data)
-			reader := flate.NewReader(input)
+			input.Reset(data)
+			if reader == nil {
+				reader = flate.NewReader(&input)
+			} else if err := reader.(flate.Resetter).Reset(&input, nil); err != nil {
+				return total, err
+			}
 			count, readErr := io.ReadFull(reader, decoded[:rawLen])
 			extra, endErr := reader.Read(decoded[rawLen : rawLen+1])
-			reader.Close()
 			if count != rawLen || (readErr != nil || extra != 0 || endErr != io.EOF) || input.Len() != 0 {
 				return total, errors.New("compress: invalid compressed block")
 			}
