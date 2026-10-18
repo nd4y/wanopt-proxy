@@ -71,7 +71,11 @@ func (p *Proxy) httpTransport(serverCtx context.Context) (*http.Transport, func(
 	var dials sync.WaitGroup
 	conns := make(map[*trackedConn]struct{})
 	closing := false
-	tr := &http.Transport{
+	idle := p.opt.MaxConnections
+	if p.c != nil {
+		idle = min(idle, p.c.HTTPIdleCapacity())
+	}
+	tr := &http.Transport{DisableKeepAlives: idle == 0,
 		Proxy: nil,
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			mu.Lock()
@@ -116,7 +120,7 @@ func (p *Proxy) httpTransport(serverCtx context.Context) (*http.Transport, func(
 			mu.Unlock()
 			return tracked, nil
 		},
-		MaxIdleConns: p.opt.MaxConnections, MaxIdleConnsPerHost: 16, MaxConnsPerHost: p.opt.MaxConnections,
+		MaxIdleConns: max(1, idle), MaxIdleConnsPerHost: max(1, min(16, idle)), MaxConnsPerHost: p.opt.MaxConnections,
 		IdleConnTimeout: p.opt.IdleTimeout, ResponseHeaderTimeout: p.opt.HTTPResponseHeaderTimeout,
 		ExpectContinueTimeout: time.Second, MaxResponseHeaderBytes: int64(p.opt.MaxHeaderBytes), DisableCompression: true, ForceAttemptHTTP2: false,
 	}

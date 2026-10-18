@@ -546,3 +546,13 @@ func (c *Client) dispatchDatagrams(conn *quic.Conn) {
 		}
 	}
 }
+
+// HTTPIdleCapacity reserves admission headroom for a different destination.
+// Idle compressed streams retain codec buffers, so reserve codec headroom too.
+func (c *Client) HTTPIdleCapacity() int {
+	n := c.opt.MaxActiveStreams / 2
+	if c.opt.Compression {
+		n = min(n, c.opt.MaxCompressedStreams/2)
+	}
+	return n
+}
