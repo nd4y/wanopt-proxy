@@ -3,7 +3,7 @@
 set -euo pipefail
 export GOWORK=off
 export GOTOOLCHAIN=go1.27.2
-base=7b98ced1228ac15ff8b5878334d2b9e9723cfc57
+base=1080dfd4a5ba4c726b72e8756dbe8f8112b6122e
 here=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 repo=$(git -C "$here" rev-parse --show-toplevel)
 output=${1:?Usage: bash experiments/bbr/build.sh NEW_OUTPUT_DIRECTORY}

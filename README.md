@@ -193,3 +193,6 @@ See [high-latency transport notes](docs/high-latency.md) for reviewed QUIC/BBR,
 KCP, SRT and Hysteria ideas, the HTTP compression fix, and cloud benchmark limits.
 Ordinary HTTP forwarding now honors the opt-in compression setting as well as
 SOCKS and CONNECT; it safely falls back when the server declines compression.
+
+
+For global admission, adaptive compression, bounded PSK/pin rotation, Reno/BBR selection and measurement controls, see [operations and limits](docs/operations.md).

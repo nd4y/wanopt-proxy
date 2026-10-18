@@ -51,6 +51,8 @@ jobs:
           GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags='-s -w -buildid=' -o bin/wanopt-server-linux-amd64 ./cmd/server
           GOOS=windows GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags='-s -w -buildid=' -o bin/wanopt-client-windows-amd64.exe ./cmd/client
           go build -trimpath -buildvcs=false -ldflags='-s -w -buildid=' -o bin/wanopt-keygen ./cmd/keygen
+      - name: Validate optional small-node Compose envelope
+        run: docker compose -f docker-compose.yaml -f docker-compose.small.yaml config --quiet
       - run: docker build -t wanopt-server:ci .
       - name: Exercise nonroot read-only container and restart
         env:

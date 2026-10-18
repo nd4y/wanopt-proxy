@@ -37,3 +37,11 @@ acl:
   deny: []
   allow_ports: []
   deny_ports: []
+# Process-wide TCP/codec admission. Full codec budget negotiates raw mode.
+max_active_streams: 128
+max_compressed_streams: 16
+# bbr requires the optional experimental build; normal builds support reno.
+congestion_control: reno
+# Optional key overlap, <= 7 days. Send SIGHUP after replacing config atomically.
+# previous_psk: REPLACE_WITH_PREVIOUS_BASE64_PSK
+# previous_psk_expires: REPLACE_WITH_RFC3339_UTC_EXPIRY

@@ -4,28 +4,28 @@ This opt-in experiment preserves the normal build and its upstream quic-go v0.64
 
 ## Reproduce
 
-Use Linux, Go toolchain download access, Git, tar, and a C compiler for race tests. The repository must contain base commit `7b98ced1228ac15ff8b5878334d2b9e9723cfc57` (use a full checkout of this PR). From the repository root:
+Use Linux, Go toolchain download access, Git, tar, and a C compiler for race tests. The repository must contain base commit `1080dfd4a5ba4c726b72e8756dbe8f8112b6122e` (use a full checkout of this PR). From the repository root:
 
 ```sh
 bash experiments/bbr/build.sh /tmp/wanopt-bbr-bin
-WANOPT_EXPERIMENTAL_CC=standard /tmp/wanopt-bbr-bin/wanopt-server -config /path/to/server.yaml
-WANOPT_EXPERIMENTAL_CC=standard /tmp/wanopt-bbr-bin/wanopt-client -config /path/to/client.yaml
+/tmp/wanopt-bbr-bin/wanopt-server -config /path/to/server.yaml
+/tmp/wanopt-bbr-bin/wanopt-client -config /path/to/client.yaml
 ```
 
 The output directory must not exist. The script builds in a temporary directory, applies the two checked-in patches, runs transport and application race tests, vet and govulncheck, then emits binaries and patch hashes. Temporary sources are removed on exit. It pins Go 1.27.2. The normal module is never edited. Remove the output directory after testing.
 
-The empty environment variable or `reno` retains quic-go's default controller. Set `standard` independently on both peers to test BBR in both directions. The imported controller also recognizes `conservative` and `aggressive`; these were not tested on pr4/pr5. An invalid value fails initialization. Kernel TCP BBR does not select a userspace QUIC controller.
+Set `congestion_control: bbr` in both YAML configs to test both directions. The only exposed BBR profile is standard. `reno` retains upstream Reno. Ordinary builds reject `bbr` at startup. Kernel TCP BBR does not select a userspace QUIC controller. See [operations](../../docs/operations.md) for resource sizing and rollback.
 
 ## Provenance and integration
 
-- Wanopt base: `7b98ced1228ac15ff8b5878334d2b9e9723cfc57`.
+- Wanopt base: `1080dfd4a5ba4c726b72e8756dbe8f8112b6122e`.
 - Transport: upstream [quic-go v0.64.0](https://github.com/quic-go/quic-go/releases/tag/v0.64.0), with a small connection-creation hook and ACK/loss adapter. No downgrade to the older apernet transport.
 - Controller: [Hysteria](https://github.com/HyNetworks/hysteria) BBR/common source at commit `ca8fbd874fd6ca82413948de6dc5924405e103e1`, copied from the HyNetworks repository with MIT license preserved in `wanopt.patch`.
 - Public congestion interface and adapter shape: [apernet/quic-go](https://github.com/apernet/quic-go/tree/a10df75c260c). The implementation here is a minimal port to 0.64.0, with its own adapter tests and the original license retained.
 
-A new controller is created before each connection starts and on path migration. There is no concurrent replacement of a live controller. ACK/loss events are batched with the pre-event bytes-in-flight value; batches are cleared after delivery. Congestion-window statistics are updated after feedback and MTU changes. Reno remains unchanged when no factory is configured. Tests cover factory isolation, loss-only events, batch replay prevention, RTT setup and migration reinitialization.
+A new controller is created before each connection starts and on path migration. There is no concurrent replacement of a live controller. ACK/loss events are batched with the pre-event bytes-in-flight value and actual transport outstanding-history watermark; batches are cleared after delivery. Initial-packet EMSGSIZE fallback may reduce the datagram size, and packet-sized BBR windows are rescaled in both directions. Congestion-window statistics are updated after feedback and MTU changes. Reno remains unchanged when no factory is configured. Tests cover factory isolation, loss-only events, batch replay prevention, RTT setup and migration reinitialization.
 
-The standard BBR profile starts with 32 packets in its congestion window. This is part of the imported profile, not an isolated comparison of equal initial windows. Pacing remains enabled. The application codec and wire format remain unchanged. A faster DEFLATE decoder was tried separately and rejected because the link measurement did not improve materially.
+The standard BBR profile starts with 32 packets in its congestion window. This is part of the imported profile, not an isolated comparison of equal initial windows. Pacing remains enabled. The existing block format is retained; the base application now has adaptive compression and global admission. A faster DEFLATE decoder was rejected because the prior WAN pilot did not improve materially.
 
 ## Limits
 

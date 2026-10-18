@@ -154,10 +154,10 @@ index db942ac9..7566c066 100644
  	GetConfigForClient func(info *ClientInfo) (*Config, error)
 diff --git a/internal/ackhandler/cc_adapter.go b/internal/ackhandler/cc_adapter.go
 new file mode 100644
-index 00000000..2e8afab9
+index 00000000..98cd5926
 --- /dev/null
 +++ b/internal/ackhandler/cc_adapter.go
-@@ -0,0 +1,104 @@
+@@ -0,0 +1,114 @@
 +package ackhandler
 +
 +import (
@@ -256,11 +256,83 @@ index 00000000..2e8afab9
 +		return
 +	}
 +	if ex, ok := a.CC.(congestion.CongestionControlEx); ok && (len(a.acked) > 0 || len(a.lost) > 0) {
-+		ex.OnCongestionEventEx(congestion.ByteCount(prior), now, a.acked, a.lost)
++		if exact, ok := a.CC.(interface {
++			OnCongestionEventExWithLeastUnacked(congestion.ByteCount, monotime.Time, []congestion.AckedPacketInfo, []congestion.LostPacketInfo, congestion.PacketNumber)
++		}); ok {
++			least := h.hist.FirstPacketNumber()
++			if least == protocol.InvalidPacketNumber {
++				least = h.hist.highestPacketNumber + 1
++			}
++			exact.OnCongestionEventExWithLeastUnacked(congestion.ByteCount(prior), now, a.acked, a.lost, congestion.PacketNumber(least))
++		} else {
++			ex.OnCongestionEventEx(congestion.ByteCount(prior), now, a.acked, a.lost)
++		}
 +	}
 +	a.acked = a.acked[:0]
 +	a.lost = a.lost[:0]
 +	h.connStats.CongestionWindow.Store(uint64(a.CC.GetCongestionWindow()))
++}
+diff --git a/internal/ackhandler/cc_adapter_recovery_test.go b/internal/ackhandler/cc_adapter_recovery_test.go
+new file mode 100644
+index 00000000..737e7d04
+--- /dev/null
++++ b/internal/ackhandler/cc_adapter_recovery_test.go
+@@ -0,0 +1,56 @@
++package ackhandler
++
++import (
++	ext "github.com/quic-go/quic-go/congestion"
++	"github.com/quic-go/quic-go/internal/monotime"
++	"github.com/quic-go/quic-go/internal/protocol"
++	"github.com/quic-go/quic-go/internal/utils"
++	"testing"
++)
++
++type recoveryController struct {
++	*eventController
++	least    ext.PacketNumber
++	timeouts []bool
++	spurious ext.PacketNumber
++}
++
++func (c *recoveryController) OnCongestionEventExWithLeastUnacked(prior ext.ByteCount, now monotime.Time, a []ext.AckedPacketInfo, l []ext.LostPacketInfo, least ext.PacketNumber) {
++	c.least = least
++	c.OnCongestionEventEx(prior, now, a, l)
++}
++func (c *recoveryController) OnRetransmissionTimeout(retransmitted bool) {
++	c.timeouts = append(c.timeouts, retransmitted)
++}
++func (c *recoveryController) OnSpuriousLoss(pn ext.PacketNumber) { c.spurious = pn }
++func (c *recoveryController) SetMaxDatagramSize(n ext.ByteCount) { c.size = n }
++func TestAdapterExactHistoryTimeoutAndSpuriousLoss(t *testing.T) {
++	h := NewSentPacketHandler(0, 1200, utils.NewRTTStats(), &utils.ConnectionStats{}, false, false, nil, protocol.PerspectiveClient, nil, utils.DefaultLogger).(*sentPacketHandler)
++	c := &recoveryController{eventController: &eventController{size: 1200}}
++	ConfigureCongestion(h, func(ext.ByteCount) ext.CongestionControl { return c }, 1200)
++	h.hist.firstPacketNumber = 2
++	h.hist.highestPacketNumber = 100
++	a := h.congestion.(*ccAdapter)
++	now := monotime.Now()
++	a.OnPacketAcked(100, 1200, 3600, now)
++	h.flushCongestion(3600, now)
++	if c.least != 2 {
++		t.Fatal("adapter guessed ACK threshold instead of transport history")
++	}
++	a.OnRetransmissionTimeout(false)
++	a.OnRetransmissionTimeout(true)
++	a.OnSpuriousLoss(9)
++	if len(c.timeouts) != 2 || c.timeouts[0] || !c.timeouts[1] || c.spurious != 9 {
++		t.Fatal("recovery notification lost")
++	}
++	a.SetMaxDatagramSize(1400)
++	if h.connStats.CongestionWindow.Load() != 44800 {
++		t.Fatal("MTU change left stale window stats")
++	}
++	h.hist.firstPacketNumber = protocol.InvalidPacketNumber
++	a.OnCongestionEvent(1, 1200, 1200)
++	h.flushCongestion(1200, now)
++	if c.least != 101 {
++		t.Fatal("empty history watermark incorrect")
++	}
 +}
 diff --git a/internal/ackhandler/cc_adapter_test.go b/internal/ackhandler/cc_adapter_test.go
 new file mode 100644

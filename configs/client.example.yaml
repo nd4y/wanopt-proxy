@@ -20,3 +20,11 @@ max_header_bytes: 65536
 max_stream_recv_window_mb: 16
 max_conn_recv_window_mb: 24
 metrics_listen: "127.0.0.1:9102"
+# Process-wide TCP/codec admission. Full codec budget negotiates raw mode.
+max_active_streams: 128
+max_compressed_streams: 16
+# bbr requires the optional experimental build; normal builds support reno.
+congestion_control: reno
+# Optional next SPKI pin, <= 7 days. Primary pin remains valid until replaced.
+# next_pin: REPLACE_WITH_NEXT_BASE64_PIN
+# next_pin_expires: REPLACE_WITH_RFC3339_UTC_EXPIRY

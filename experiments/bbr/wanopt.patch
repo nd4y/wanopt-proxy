@@ -61,11 +61,11 @@ index 0000000..208e8f2
 +THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 diff --git a/internal/congestion/NOTICE.md b/internal/congestion/NOTICE.md
 new file mode 100644
-index 0000000..b6d4fff
+index 0000000..b6c5a2f
 --- /dev/null
 +++ b/internal/congestion/NOTICE.md
 @@ -0,0 +1 @@
-+BBR/common sources adapted from HyNetworks/hysteria commit ca8fbd874fd6ca82413948de6dc5924405e103e1 (MIT). Only internal import paths changed. Original license retained. Experimental integration; upstream quic-go remains in the stable branch.
++BBR/common sources adapted from HyNetworks/hysteria commit ca8fbd874fd6ca82413948de6dc5924405e103e1 (MIT), with import path changes. The wanopt port adds exact outstanding-packet history feedback, an empty-event guard, and bidirectional MTU-limit rescaling for quic-go Initial EMSGSIZE fallback, with regression tests. Original license retained. Experimental integration; upstream quic-go remains in the normal build.
 diff --git a/internal/congestion/bbr/bandwidth.go b/internal/congestion/bbr/bandwidth.go
 new file mode 100644
 index 0000000..df96fcb
@@ -984,10 +984,10 @@ index 0000000..cbeaa74
 +}
 diff --git a/internal/congestion/bbr/bbr_sender.go b/internal/congestion/bbr/bbr_sender.go
 new file mode 100644
-index 0000000..8369ce3
+index 0000000..5316b97
 --- /dev/null
 +++ b/internal/congestion/bbr/bbr_sender.go
-@@ -0,0 +1,1088 @@
+@@ -0,0 +1,1107 @@
 +package bbr
 +
 +import (
@@ -1155,9 +1155,11 @@ index 0000000..8369ce3
 +}
 +
 +type bbrSender struct {
-+	rttStats congestion.RTTStatsProvider
-+	clock    Clock
-+	pacer    *common.Pacer
++	exactLeastUnacked    congestion.PacketNumber
++	hasExactLeastUnacked bool
++	rttStats             congestion.RTTStatsProvider
++	clock                Clock
++	pacer                *common.Pacer
 +
 +	mode bbrMode
 +
@@ -1480,8 +1482,10 @@ index 0000000..8369ce3
 +	if b.debug {
 +		b.debugPrint("Max Datagram Size: %d", s)
 +	}
-+	if s < b.maxDatagramSize {
-+		panic(fmt.Sprintf("congestion BUG: decreased max datagram size from %d to %d", b.maxDatagramSize, s))
++	// quic-go may reduce InitialPacketSize after EMSGSIZE. Rescale the
++	// packet-sized limits in both directions instead of terminating the process.
++	if s <= 0 {
++		panic("congestion: invalid max datagram size")
 +	}
 +	oldMinCongestionWindow := b.minCongestionWindow
 +	oldInitialCongestionWindow := b.initialCongestionWindow
@@ -1526,6 +1530,9 @@ index 0000000..8369ce3
 +}
 +
 +func (b *bbrSender) OnCongestionEventEx(priorInFlight congestion.ByteCount, eventTime monotime.Time, ackedPackets []congestion.AckedPacketInfo, lostPackets []congestion.LostPacketInfo) {
++	if len(ackedPackets) == 0 && len(lostPackets) == 0 {
++		return
++	}
 +	totalBytesAckedBefore := b.sampler.TotalBytesAcked()
 +	totalBytesLostBefore := b.sampler.TotalBytesLost()
 +
@@ -1618,6 +1625,9 @@ index 0000000..8369ce3
 +		leastUnacked = ackedPackets[len(ackedPackets)-1].PacketNumber - 2
 +	} else {
 +		leastUnacked = lostPackets[len(lostPackets)-1].PacketNumber + 1
++	}
++	if b.hasExactLeastUnacked {
++		leastUnacked = b.exactLeastUnacked
 +	}
 +	b.sampler.RemoveObsoletePackets(leastUnacked)
 +
@@ -2076,12 +2086,21 @@ index 0000000..8369ce3
 +	}
 +	return fmt.Sprintf("%.2f %s", bwf, units[unitIndex])
 +}
++
++// OnCongestionEventExWithLeastUnacked uses the transport's actual outstanding
++// history instead of a fixed reordering-threshold approximation.
++func (b *bbrSender) OnCongestionEventExWithLeastUnacked(prior congestion.ByteCount, now monotime.Time, acked []congestion.AckedPacketInfo, lost []congestion.LostPacketInfo, least congestion.PacketNumber) {
++	b.exactLeastUnacked = least
++	b.hasExactLeastUnacked = true
++	defer func() { b.hasExactLeastUnacked = false }()
++	b.OnCongestionEventEx(prior, now, acked, lost)
++}
 diff --git a/internal/congestion/bbr/bbr_sender_test.go b/internal/congestion/bbr/bbr_sender_test.go
 new file mode 100644
-index 0000000..eb6646b
+index 0000000..5d9a26c
 --- /dev/null
 +++ b/internal/congestion/bbr/bbr_sender_test.go
-@@ -0,0 +1,130 @@
+@@ -0,0 +1,145 @@
 +package bbr
 +
 +import (
@@ -2211,6 +2230,21 @@ index 0000000..eb6646b
 +
 +	_, err = ParseProfile("turbo")
 +	require.EqualError(t, err, `unsupported BBR profile "turbo"`)
++}
++
++func TestSetMaxDatagramSizeHandlesInitialFallback(t *testing.T) {
++	b := NewBbrSender(DefaultClock{}, 1280, ProfileStandard)
++	b.SetMaxDatagramSize(1200)
++	require.Equal(t, congestion.ByteCount(32*1200), b.initialCongestionWindow)
++	require.Equal(t, b.initialCongestionWindow, b.congestionWindow)
++	require.Equal(t, congestion.ByteCount(4*1200), b.minCongestionWindow)
++	require.LessOrEqual(t, b.recoveryWindow, b.maxCongestionWindow)
++	b.SetMaxDatagramSize(1400)
++	b.congestionWindow = b.maxCongestionWindow
++	b.recoveryWindow = b.maxCongestionWindow
++	b.SetMaxDatagramSize(1200)
++	require.Equal(t, b.maxCongestionWindow, b.congestionWindow)
++	require.Equal(t, b.maxCongestionWindow, b.recoveryWindow)
 +}
 diff --git a/internal/congestion/bbr/clock.go b/internal/congestion/bbr/clock.go
 new file mode 100644
@@ -2440,6 +2474,49 @@ index 0000000..5846664
 +	}
 +
 +	return ew
++}
+diff --git a/internal/congestion/bbr/reordering_test.go b/internal/congestion/bbr/reordering_test.go
+new file mode 100644
+index 0000000..bb9c546
+--- /dev/null
++++ b/internal/congestion/bbr/reordering_test.go
+@@ -0,0 +1,37 @@
++package bbr
++
++import (
++	"github.com/quic-go/quic-go/congestion"
++	"github.com/quic-go/quic-go/monotime"
++	"testing"
++	"time"
++)
++
++type fixedRTT struct{ congestion.RTTStatsProvider }
++
++func (fixedRTT) MinRTT() time.Duration { return 100 * time.Millisecond }
++func TestExactOutstandingHistoryPreservesReorderedSamples(t *testing.T) {
++	b := NewBbrSender(DefaultClock{}, 1200, ProfileStandard)
++	b.SetRTTStatsProvider(fixedRTT{})
++	now := monotime.Now()
++	for pn := congestion.PacketNumber(1); pn <= 6; pn++ {
++		b.OnPacketSent(now.Add(time.Duration(pn)*time.Millisecond), (congestion.ByteCount(pn)-1)*1200, pn, 1200, true)
++	}
++	now = now.Add(110 * time.Millisecond)
++	b.OnCongestionEventExWithLeastUnacked(7200, now, []congestion.AckedPacketInfo{{PacketNumber: 6, BytesAcked: 1200}}, nil, 1)
++	if b.sampler.connectionStateMap.GetEntry(1) == nil {
++		t.Fatal("unacknowledged sample removed using guessed ACK threshold")
++	}
++	b.OnCongestionEventExWithLeastUnacked(6000, now.Add(time.Millisecond), nil, []congestion.LostPacketInfo{{PacketNumber: 5, BytesLost: 1200}}, 1)
++	if b.sampler.connectionStateMap.GetEntry(1) == nil {
++		t.Fatal("loss-only batch removed unrelated outstanding sample")
++	}
++	b.OnCongestionEventExWithLeastUnacked(4800, now.Add(2*time.Millisecond), []congestion.AckedPacketInfo{{PacketNumber: 1, BytesAcked: 1200}, {PacketNumber: 2, BytesAcked: 1200}, {PacketNumber: 3, BytesAcked: 1200}, {PacketNumber: 4, BytesAcked: 1200}}, nil, 7)
++	if b.sampler.connectionStateMap.NumberOfPresentEntries() != 0 {
++		t.Fatal("sampler retained finished packets")
++	}
++	if b.GetCongestionWindow() < b.minCongestionWindow || b.GetCongestionWindow() > b.maxCongestionWindow {
++		t.Fatal("invalid recovery window")
++	}
++	b.OnCongestionEventEx(0, now, nil, nil)
 +}
 diff --git a/internal/congestion/bbr/ringbuffer.go b/internal/congestion/bbr/ringbuffer.go
 new file mode 100644
@@ -2819,121 +2896,54 @@ index 0000000..3c89c32
 +func (p *Pacer) SetMaxDatagramSize(s congestion.ByteCount) {
 +	p.maxDatagramSize = s
 +}
-diff --git a/internal/tunnel/congestion.go b/internal/tunnel/congestion.go
+diff --git a/internal/tunnel/bbr_registration.go b/internal/tunnel/bbr_registration.go
 new file mode 100644
-index 0000000..ec859d4
+index 0000000..a068f32
 --- /dev/null
-+++ b/internal/tunnel/congestion.go
-@@ -0,0 +1,23 @@
++++ b/internal/tunnel/bbr_registration.go
+@@ -0,0 +1,15 @@
 +package tunnel
 +
 +import (
 +	"github.com/quic-go/quic-go"
 +	"github.com/quic-go/quic-go/congestion"
-+	"os"
 +	"wanopt/internal/congestion/bbr"
 +)
 +
-+func configureCongestion(cfg *quic.Config) *quic.Config {
-+	mode := os.Getenv("WANOPT_EXPERIMENTAL_CC")
-+	if mode == "" || mode == "reno" {
-+		return cfg
++func init() {
++	bbrConfigurer = func(cfg *quic.Config) {
++		cfg.CongestionControl = func(size congestion.ByteCount) congestion.CongestionControl {
++			return bbr.NewBbrSender(bbr.DefaultClock{}, size, bbr.ProfileStandard)
++		}
 +	}
-+	profile, err := bbr.ParseProfile(mode)
-+	if err != nil {
-+		panic(err)
-+	}
-+	cfg.CongestionControl = func(size congestion.ByteCount) congestion.CongestionControl {
-+		return bbr.NewBbrSender(bbr.DefaultClock{}, size, profile)
-+	}
-+	return cfg
 +}
-diff --git a/internal/tunnel/congestion_test.go b/internal/tunnel/congestion_test.go
+diff --git a/internal/tunnel/bbr_registration_test.go b/internal/tunnel/bbr_registration_test.go
 new file mode 100644
-index 0000000..6a7b450
+index 0000000..b8bb4f9
 --- /dev/null
-+++ b/internal/tunnel/congestion_test.go
-@@ -0,0 +1,29 @@
++++ b/internal/tunnel/bbr_registration_test.go
+@@ -0,0 +1,24 @@
 +package tunnel
 +
 +import (
-+	"github.com/quic-go/quic-go"
 +	"github.com/quic-go/quic-go/congestion"
 +	"testing"
 +)
 +
-+func TestExperimentalCongestionFactory(t *testing.T) {
-+	for _, mode := range []string{"", "reno"} {
-+		t.Setenv("WANOPT_EXPERIMENTAL_CC", mode)
-+		cfg := &quic.Config{MaxIncomingStreams: 13}
-+		if configureCongestion(cfg) != cfg || cfg.CongestionControl != nil || cfg.MaxIncomingStreams != 13 {
-+			t.Fatal("Reno configuration changed")
-+		}
++func TestBBRConfigAndIndependentConnections(t *testing.T) {
++	if !CongestionAvailable("bbr") {
++		t.Fatal("BBR was not registered")
 +	}
-+	t.Setenv("WANOPT_EXPERIMENTAL_CC", "standard")
-+	cfg := configureCongestion(&quic.Config{})
++	reno := NewQUICConfig(QUICOptions{CongestionControl: "reno"})
++	if reno.CongestionControl != nil {
++		t.Fatal("Reno changed")
++	}
++	cfg := NewQUICConfig(QUICOptions{CongestionControl: "bbr"})
 +	if cfg.CongestionControl == nil {
-+		t.Fatal("BBR factory missing")
++		t.Fatal("BBR not selected")
 +	}
 +	a, b := cfg.CongestionControl(congestion.InitialPacketSize), cfg.CongestionControl(congestion.InitialPacketSize)
-+	if a == b {
-+		t.Fatal("connections share mutable congestion state")
-+	}
-+	if a.GetCongestionWindow() <= 0 || b.GetCongestionWindow() <= 0 {
-+		t.Fatal("invalid initial window")
++	if a == b || a.GetCongestionWindow() <= 0 || b.GetCongestionWindow() <= 0 {
++		t.Fatal("connections share state or have no window")
 +	}
 +}
-diff --git a/internal/tunnel/quicconf.go b/internal/tunnel/quicconf.go
-index 4d82f4a..599084a 100644
---- a/internal/tunnel/quicconf.go
-+++ b/internal/tunnel/quicconf.go
-@@ -40,7 +40,7 @@ func NewQUICConfig(o QUICOptions) *quic.Config {
- 	if o.MaxIncomingStreams == 0 {
- 		o.MaxIncomingStreams = 128
- 	}
--	return &quic.Config{
-+	return configureCongestion(&quic.Config{
- 		EnableDatagrams:      o.EnableDatagrams,
- 		HandshakeIdleTimeout: o.HandshakeTimeout / 2,
- 		MaxIdleTimeout:       o.IdleTimeout, KeepAlivePeriod: o.IdleTimeout / 3,
-@@ -50,5 +50,5 @@ func NewQUICConfig(o QUICOptions) *quic.Config {
- 		MaxConnectionReceiveWindow:     o.MaxConnRecvWindow,
- 		MaxIncomingStreams:             o.MaxIncomingStreams, MaxIncomingUniStreams: 3,
- 		Allow0RTT: false, TokenStore: o.TokenStore,
--	}
-+	})
- }
-diff --git a/tools/wanbench/main.go b/tools/wanbench/main.go
-index 69817fc..36d2b0c 100644
---- a/tools/wanbench/main.go
-+++ b/tools/wanbench/main.go
-@@ -11,9 +11,11 @@ import (
- 	"io"
- 	"math/rand"
- 	"net/http"
-+	"net/http/httptrace"
- 	"net/url"
- 	"os"
- 	"strconv"
-+	"sync/atomic"
- 	"time"
- )
- 
-@@ -104,6 +106,8 @@ func main() {
- 			body = bytes.NewReader(b)
- 		}
- 		req, _ := http.NewRequest(*dir, *base+"/transfer?kind="+*kind+"&bytes="+strconv.Itoa(*n), body)
-+		var reused atomic.Bool
-+		req = req.WithContext(httptrace.WithClientTrace(req.Context(), &httptrace.ClientTrace{GotConn: func(info httptrace.GotConnInfo) { reused.Store(info.Reused) }}))
- 		start := time.Now()
- 		r, e = c.Do(req)
- 		if e != nil {
-@@ -131,7 +135,7 @@ func main() {
- 		sec := time.Since(start).Seconds()
- 		ok := e == nil && r.StatusCode == 200 && got == expected && count == int64(len(b))
- 		if iteration == iterations-1 {
--			json.NewEncoder(os.Stdout).Encode(map[string]any{"warmed": *warm, "label": *label, "kind": *kind, "direction": *dir, "bytes": count, "logical_bytes": *n, "seconds": sec, "mbps": float64(count) * 8 / sec / 1e6, "integrity": ok})
-+			json.NewEncoder(os.Stdout).Encode(map[string]any{"warmed": *warm, "connection_reused": reused.Load(), "response_close": r.Close, "label": *label, "kind": *kind, "direction": *dir, "bytes": count, "logical_bytes": *n, "seconds": sec, "mbps": float64(count) * 8 / sec / 1e6, "integrity": ok})
- 		}
- 		r.Body.Close()
- 		if !ok {
