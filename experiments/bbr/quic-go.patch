@@ -1,0 +1,426 @@
+diff --git a/config.go b/config.go
+index f107ac48..bacbd345 100644
+--- a/config.go
++++ b/config.go
+@@ -124,6 +124,7 @@ func populateConfig(config *Config) *Config {
+ 		TokenStore:                       config.TokenStore,
+ 		EnableDatagrams:                  config.EnableDatagrams,
+ 		InitialPacketSize:                config.InitialPacketSize,
++		CongestionControl:                config.CongestionControl,
+ 		DisablePathMTUDiscovery:          config.DisablePathMTUDiscovery,
+ 		EnableStreamResetPartialDelivery: config.EnableStreamResetPartialDelivery,
+ 		Allow0RTT:                        config.Allow0RTT,
+diff --git a/config_test.go b/config_test.go
+index 0950b8cb..196672dc 100644
+--- a/config_test.go
++++ b/config_test.go
+@@ -86,7 +86,7 @@ func configWithNonZeroNonFunctionFields(t *testing.T) *Config {
+ 		}
+ 
+ 		switch fn := typ.Field(i).Name; fn {
+-		case "GetConfigForClient", "RequireAddressValidation", "GetLogWriter", "AllowConnectionWindowIncrease", "Tracer":
++		case "GetConfigForClient", "RequireAddressValidation", "GetLogWriter", "AllowConnectionWindowIncrease", "Tracer", "CongestionControl":
+ 			// Can't compare functions.
+ 		case "Versions":
+ 			f.Set(reflect.ValueOf([]Version{1, 2, 3}))
+diff --git a/congestion/LICENSE.hysteria b/congestion/LICENSE.hysteria
+new file mode 100644
+index 00000000..208e8f29
+--- /dev/null
++++ b/congestion/LICENSE.hysteria
+@@ -0,0 +1,7 @@
++Copyright 2023 Toby
++
++Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
++
++The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+diff --git a/congestion/interface.go b/congestion/interface.go
+new file mode 100644
+index 00000000..fd9de104
+--- /dev/null
++++ b/congestion/interface.go
+@@ -0,0 +1,67 @@
++package congestion
++
++import (
++	"time"
++
++	"github.com/quic-go/quic-go/internal/protocol"
++	"github.com/quic-go/quic-go/monotime"
++)
++
++type (
++	ByteCount    protocol.ByteCount
++	PacketNumber protocol.PacketNumber
++)
++
++// Expose some constants from protocol that congestion control algorithms may need.
++const (
++	InitialPacketSize          = protocol.InitialPacketSize
++	MinPacingDelay             = time.Millisecond
++	MaxPacketBufferSize        = protocol.MaxPacketBufferSize
++	MinInitialPacketSize       = protocol.MinInitialPacketSize
++	MaxCongestionWindowPackets = protocol.MaxCongestionWindowPackets
++	PacketsPerConnectionID     = protocol.PacketsPerConnectionID
++)
++
++type AckedPacketInfo struct {
++	PacketNumber PacketNumber
++	BytesAcked   ByteCount
++	ReceivedTime monotime.Time
++}
++
++type LostPacketInfo struct {
++	PacketNumber PacketNumber
++	BytesLost    ByteCount
++}
++
++type CongestionControl interface {
++	SetRTTStatsProvider(provider RTTStatsProvider)
++	TimeUntilSend(bytesInFlight ByteCount) monotime.Time
++	HasPacingBudget(now monotime.Time) bool
++	OnPacketSent(sentTime monotime.Time, bytesInFlight ByteCount, packetNumber PacketNumber, bytes ByteCount, isRetransmittable bool)
++	CanSend(bytesInFlight ByteCount) bool
++	MaybeExitSlowStart()
++	OnPacketAcked(number PacketNumber, ackedBytes ByteCount, priorInFlight ByteCount, eventTime monotime.Time)
++	OnCongestionEvent(number PacketNumber, lostBytes ByteCount, priorInFlight ByteCount)
++	OnRetransmissionTimeout(packetsRetransmitted bool)
++	SetMaxDatagramSize(size ByteCount)
++	InSlowStart() bool
++	InRecovery() bool
++	GetCongestionWindow() ByteCount
++}
++
++type CongestionControlEx interface {
++	CongestionControl
++	OnCongestionEventEx(priorInFlight ByteCount, eventTime monotime.Time, ackedPackets []AckedPacketInfo, lostPackets []LostPacketInfo)
++}
++
++type RTTStatsProvider interface {
++	MinRTT() time.Duration
++	LatestRTT() time.Duration
++	SmoothedRTT() time.Duration
++	MeanDeviation() time.Duration
++	MaxAckDelay() time.Duration
++	PTO(includeMaxAckDelay bool) time.Duration
++	UpdateRTT(sendDelta, ackDelay time.Duration)
++	SetMaxAckDelay(mad time.Duration)
++	SetInitialRTT(t time.Duration)
++}
+diff --git a/connection.go b/connection.go
+index 52dcd212..a6775ac5 100644
+--- a/connection.go
++++ b/connection.go
+@@ -322,6 +322,7 @@ var newConnection = func(
+ 		s.qlogger,
+ 		s.logger,
+ 	)
++	ackhandler.ConfigureCongestion(s.sentPacketHandler, s.config.CongestionControl, s.config.initialPacketSize())
+ 	s.maxPayloadSizeEstimate.Store(uint32(estimateMaxPayloadSize(s.config.initialPacketSize())))
+ 	statelessResetToken := statelessResetter.GetStatelessResetToken(srcConnID)
+ 	params := &wire.TransportParameters{
+@@ -463,6 +464,7 @@ var newClientConnection = func(
+ 		s.qlogger,
+ 		s.logger,
+ 	)
++	ackhandler.ConfigureCongestion(s.sentPacketHandler, s.config.CongestionControl, s.config.initialPacketSize())
+ 	s.maxPayloadSizeEstimate.Store(uint32(estimateMaxPayloadSize(s.config.initialPacketSize())))
+ 	oneRTTStream := newCryptoStream()
+ 	params := &wire.TransportParameters{
+diff --git a/interface.go b/interface.go
+index db942ac9..7566c066 100644
+--- a/interface.go
++++ b/interface.go
+@@ -8,6 +8,7 @@ import (
+ 	"slices"
+ 	"time"
+ 
++	"github.com/quic-go/quic-go/congestion"
+ 	"github.com/quic-go/quic-go/internal/handshake"
+ 	"github.com/quic-go/quic-go/internal/protocol"
+ 	"github.com/quic-go/quic-go/qlogwriter"
+@@ -104,6 +105,10 @@ type ConnectionIDGenerator interface {
+ 
+ // Config contains all configuration data needed for a QUIC server or client.
+ type Config struct {
++	// CongestionControl creates a fresh controller before connection processing starts.
++	// It is called again on path migration. Nil preserves upstream Reno.
++	CongestionControl func(congestion.ByteCount) congestion.CongestionControl
++
+ 	// GetConfigForClient is called for incoming connections.
+ 	// If the error is not nil, the connection attempt is refused.
+ 	GetConfigForClient func(info *ClientInfo) (*Config, error)
+diff --git a/internal/ackhandler/cc_adapter.go b/internal/ackhandler/cc_adapter.go
+new file mode 100644
+index 00000000..2e8afab9
+--- /dev/null
++++ b/internal/ackhandler/cc_adapter.go
+@@ -0,0 +1,104 @@
++package ackhandler
++
++import (
++	"github.com/quic-go/quic-go/congestion"
++	cgInternal "github.com/quic-go/quic-go/internal/congestion"
++	"github.com/quic-go/quic-go/internal/monotime"
++	"github.com/quic-go/quic-go/internal/protocol"
++	"github.com/quic-go/quic-go/internal/utils"
++)
++
++var _ cgInternal.SendAlgorithmWithDebugInfos = &ccAdapter{}
++
++type ccAdapter struct {
++	CC    congestion.CongestionControl
++	acked []congestion.AckedPacketInfo
++	lost  []congestion.LostPacketInfo
++	stats *utils.ConnectionStats
++}
++
++func (a *ccAdapter) TimeUntilSend(bytesInFlight protocol.ByteCount) monotime.Time {
++	return a.CC.TimeUntilSend(congestion.ByteCount(bytesInFlight))
++}
++
++func (a *ccAdapter) HasPacingBudget(now monotime.Time) bool {
++	return a.CC.HasPacingBudget(now)
++}
++
++func (a *ccAdapter) OnPacketSent(sentTime monotime.Time, bytesInFlight protocol.ByteCount, packetNumber protocol.PacketNumber, bytes protocol.ByteCount, isRetransmittable bool) {
++	a.CC.OnPacketSent(sentTime, congestion.ByteCount(bytesInFlight), congestion.PacketNumber(packetNumber), congestion.ByteCount(bytes), isRetransmittable)
++}
++
++func (a *ccAdapter) CanSend(bytesInFlight protocol.ByteCount) bool {
++	return a.CC.CanSend(congestion.ByteCount(bytesInFlight))
++}
++
++func (a *ccAdapter) MaybeExitSlowStart() {
++	a.CC.MaybeExitSlowStart()
++}
++
++func (a *ccAdapter) OnPacketAcked(number protocol.PacketNumber, ackedBytes protocol.ByteCount, priorInFlight protocol.ByteCount, eventTime monotime.Time) {
++	a.CC.OnPacketAcked(congestion.PacketNumber(number), congestion.ByteCount(ackedBytes), congestion.ByteCount(priorInFlight), eventTime)
++	if _, ok := a.CC.(congestion.CongestionControlEx); ok {
++		a.acked = append(a.acked, congestion.AckedPacketInfo{PacketNumber: congestion.PacketNumber(number), BytesAcked: congestion.ByteCount(ackedBytes), ReceivedTime: eventTime})
++	}
++}
++
++func (a *ccAdapter) OnCongestionEvent(number protocol.PacketNumber, lostBytes protocol.ByteCount, priorInFlight protocol.ByteCount) {
++	a.CC.OnCongestionEvent(congestion.PacketNumber(number), congestion.ByteCount(lostBytes), congestion.ByteCount(priorInFlight))
++	if _, ok := a.CC.(congestion.CongestionControlEx); ok && lostBytes > 0 {
++		a.lost = append(a.lost, congestion.LostPacketInfo{PacketNumber: congestion.PacketNumber(number), BytesLost: congestion.ByteCount(lostBytes)})
++	}
++}
++
++func (a *ccAdapter) OnRetransmissionTimeout(packetsRetransmitted bool) {
++	a.CC.OnRetransmissionTimeout(packetsRetransmitted)
++}
++
++func (a *ccAdapter) SetMaxDatagramSize(size protocol.ByteCount) {
++	a.CC.SetMaxDatagramSize(congestion.ByteCount(size))
++	a.stats.CongestionWindow.Store(uint64(a.CC.GetCongestionWindow()))
++}
++
++func (a *ccAdapter) InSlowStart() bool {
++	return a.CC.InSlowStart()
++}
++
++func (a *ccAdapter) InRecovery() bool {
++	return a.CC.InRecovery()
++}
++
++func (a *ccAdapter) GetCongestionWindow() protocol.ByteCount {
++	return protocol.ByteCount(a.CC.GetCongestionWindow())
++}
++
++// ConfigureCongestion is called only before the connection loop starts, or by
++// that loop during path migration. There is no concurrent live replacement.
++func ConfigureCongestion(handler SentPacketHandler, factory func(congestion.ByteCount) congestion.CongestionControl, size protocol.ByteCount) {
++	if factory == nil {
++		return
++	}
++	h := handler.(*sentPacketHandler)
++	h.congestionFactory = factory
++	cc := factory(congestion.ByteCount(size))
++	cc.SetRTTStatsProvider(h.rttStats)
++	h.congestion = &ccAdapter{CC: cc, stats: h.connStats}
++	h.connStats.CongestionWindow.Store(uint64(cc.GetCongestionWindow()))
++}
++func (a *ccAdapter) OnSpuriousLoss(number protocol.PacketNumber) {
++	if cc, ok := a.CC.(interface{ OnSpuriousLoss(congestion.PacketNumber) }); ok {
++		cc.OnSpuriousLoss(congestion.PacketNumber(number))
++	}
++}
++func (h *sentPacketHandler) flushCongestion(prior protocol.ByteCount, now monotime.Time) {
++	a, ok := h.congestion.(*ccAdapter)
++	if !ok {
++		return
++	}
++	if ex, ok := a.CC.(congestion.CongestionControlEx); ok && (len(a.acked) > 0 || len(a.lost) > 0) {
++		ex.OnCongestionEventEx(congestion.ByteCount(prior), now, a.acked, a.lost)
++	}
++	a.acked = a.acked[:0]
++	a.lost = a.lost[:0]
++	h.connStats.CongestionWindow.Store(uint64(a.CC.GetCongestionWindow()))
++}
+diff --git a/internal/ackhandler/cc_adapter_test.go b/internal/ackhandler/cc_adapter_test.go
+new file mode 100644
+index 00000000..abe32ac7
+--- /dev/null
++++ b/internal/ackhandler/cc_adapter_test.go
+@@ -0,0 +1,68 @@
++package ackhandler
++
++import (
++	ext "github.com/quic-go/quic-go/congestion"
++	"github.com/quic-go/quic-go/internal/monotime"
++	"github.com/quic-go/quic-go/internal/protocol"
++	"github.com/quic-go/quic-go/internal/utils"
++	"testing"
++)
++
++type eventController struct {
++	ext.CongestionControl
++	rtt   ext.RTTStatsProvider
++	size  ext.ByteCount
++	calls int
++	acked []ext.AckedPacketInfo
++	lost  []ext.LostPacketInfo
++	prior ext.ByteCount
++}
++
++func (c *eventController) SetRTTStatsProvider(r ext.RTTStatsProvider) { c.rtt = r }
++func (c *eventController) GetCongestionWindow() ext.ByteCount         { return 32 * c.size }
++func (c *eventController) OnPacketAcked(ext.PacketNumber, ext.ByteCount, ext.ByteCount, monotime.Time) {
++}
++func (c *eventController) OnCongestionEvent(ext.PacketNumber, ext.ByteCount, ext.ByteCount) {}
++func (c *eventController) OnCongestionEventEx(prior ext.ByteCount, _ monotime.Time, a []ext.AckedPacketInfo, l []ext.LostPacketInfo) {
++	c.calls++
++	c.prior = prior
++	c.acked = append([]ext.AckedPacketInfo(nil), a...)
++	c.lost = append([]ext.LostPacketInfo(nil), l...)
++}
++func TestExternalControllerBatchAndMigration(t *testing.T) {
++	h := NewSentPacketHandler(0, 1200, utils.NewRTTStats(), &utils.ConnectionStats{}, false, false, nil, protocol.PerspectiveClient, nil, utils.DefaultLogger).(*sentPacketHandler)
++	original := h.congestion
++	ConfigureCongestion(h, nil, 1200)
++	if h.congestion != original {
++		t.Fatal("nil factory replaced Reno")
++	}
++	var created []*eventController
++	factory := func(size ext.ByteCount) ext.CongestionControl {
++		c := &eventController{size: size}
++		created = append(created, c)
++		return c
++	}
++	ConfigureCongestion(h, factory, 1200)
++	a := h.congestion.(*ccAdapter)
++	now := monotime.Now()
++	a.OnPacketAcked(4, 1200, 3600, now)
++	a.OnCongestionEvent(2, 1200, 3600)
++	h.flushCongestion(3600, now)
++	c := created[0]
++	if c.rtt != h.rttStats || c.calls != 1 || c.prior != 3600 || len(c.acked) != 1 || c.acked[0].PacketNumber != 4 || len(c.lost) != 1 || c.lost[0].PacketNumber != 2 {
++		t.Fatal("batch or RTT provider mismatch")
++	}
++	h.flushCongestion(0, now)
++	if c.calls != 1 {
++		t.Fatal("batch replayed")
++	}
++	a.OnCongestionEvent(5, 1200, 1200)
++	h.flushCongestion(1200, now)
++	if c.calls != 2 || len(c.acked) != 0 || len(c.lost) != 1 {
++		t.Fatal("loss-only batch missing")
++	}
++	h.MigratedPath(now, 1280)
++	if len(created) != 2 || created[1].size != 1280 || created[1].rtt != h.rttStats || h.connStats.CongestionWindow.Load() != 40960 {
++		t.Fatal("migration did not reset controller and window")
++	}
++}
+diff --git a/internal/ackhandler/sent_packet_handler.go b/internal/ackhandler/sent_packet_handler.go
+index 5af617a3..4d099482 100644
+--- a/internal/ackhandler/sent_packet_handler.go
++++ b/internal/ackhandler/sent_packet_handler.go
+@@ -5,6 +5,7 @@ import (
+ 	"fmt"
+ 	"time"
+ 
++	congestionExt "github.com/quic-go/quic-go/congestion"
+ 	"github.com/quic-go/quic-go/internal/congestion"
+ 	"github.com/quic-go/quic-go/internal/monotime"
+ 	"github.com/quic-go/quic-go/internal/protocol"
+@@ -74,6 +75,8 @@ func (p *handshakePacketNumbers) Highest() protocol.PacketNumber {
+ }
+ 
+ type sentPacketHandler struct {
++	congestionFactory func(congestionExt.ByteCount) congestionExt.CongestionControl
++
+ 	// Packet numbers and their history are shared across encryption levels.
+ 	// ACK processing and loss detection still use the state for each space.
+ 	pns  *packetNumberGenerator
+@@ -427,6 +430,7 @@ func (h *sentPacketHandler) getPacketNumberSpace(space protocol.PacketNumberSpac
+ }
+ 
+ func (h *sentPacketHandler) ReceivedAck(ack *wire.AckFrame, encLevel protocol.EncryptionLevel, rcvTime monotime.Time) (bool /* contained 1-RTT packet */, error) {
++	defer h.flushCongestion(h.bytesInFlight, rcvTime)
+ 	pnSpace := h.getPacketNumberSpace(encLevel.PacketNumberSpace())
+ 
+ 	largestAcked := ack.LargestAcked()
+@@ -993,6 +997,7 @@ func (h *sentPacketHandler) detectLostPackets(now monotime.Time, encLevel protoc
+ }
+ 
+ func (h *sentPacketHandler) OnLossDetectionTimeout(now monotime.Time) error {
++	defer h.flushCongestion(h.bytesInFlight, now)
+ 	defer h.setLossDetectionTimer(now)
+ 
+ 	if h.handshakeConfirmed {
+@@ -1263,6 +1268,7 @@ func (h *sentPacketHandler) MigratedPath(now monotime.Time, initialMaxDatagramSi
+ 		true, // use Reno
+ 		h.qlogger,
+ 	)
++	ConfigureCongestion(h, h.congestionFactory, initialMaxDatagramSize)
+ 	h.qlogRecoveryParametersSet(true)
+ 	h.setLossDetectionTimer(now)
+ }
+diff --git a/monotime/time.go b/monotime/time.go
+new file mode 100644
+index 00000000..b7cffe90
+--- /dev/null
++++ b/monotime/time.go
+@@ -0,0 +1,37 @@
++package monotime
++
++import (
++	"time"
++
++	"github.com/quic-go/quic-go/internal/monotime"
++)
++
++// A Time represents an instant in monotonic time.
++// Times can be compared using the comparison operators, but the specific
++// value is implementation-dependent and should not be relied upon.
++// The zero value of Time doesn't have any specific meaning.
++type Time = monotime.Time
++
++// Now returns the current monotonic time.
++func Now() Time {
++	return monotime.Now()
++}
++
++// Since returns the time elapsed since t. It is shorthand for Now().Sub(t).
++func Since(t Time) time.Duration {
++	return monotime.Since(t)
++}
++
++// Until returns the duration until t.
++// It is shorthand for t.Sub(Now()).
++// If t is in the past, the returned duration will be negative.
++func Until(t Time) time.Duration {
++	return monotime.Until(t)
++}
++
++// FromTime converts a time.Time to a monotonic Time.
++// The conversion is relative to the package's start time and may lose
++// precision if the time.Time is far from the start time.
++func FromTime(t time.Time) Time {
++	return monotime.FromTime(t)
++}
