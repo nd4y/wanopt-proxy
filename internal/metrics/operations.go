@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"time"
+	"wanopt/internal/admission"
 	"wanopt/internal/compress"
 )
 
@@ -44,7 +45,9 @@ func (m *Metrics) Failure(stage string, err error) {
 	}
 	reason := "error"
 	var ne net.Error
-	if errors.Is(err, context.Canceled) {
+	if errors.Is(err, admission.ErrCapacity) {
+		reason = "capacity"
+	} else if errors.Is(err, context.Canceled) {
 		reason = "canceled"
 	} else if errors.Is(err, context.DeadlineExceeded) || (errors.As(err, &ne) && ne.Timeout()) {
 		reason = "timeout"

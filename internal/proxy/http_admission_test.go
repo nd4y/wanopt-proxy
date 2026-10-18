@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 	"wanopt/internal/client"
+	"wanopt/internal/protocol"
 	"wanopt/internal/server"
 	"wanopt/internal/tunnel"
 )
@@ -70,5 +71,25 @@ func TestHTTPIdlePoolCannotExhaustAdmissionAcrossDestinations(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestHTTPReportsCapacityAsServiceUnavailable(t *testing.T) {
+	p := New(nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	p.dialStream = func(context.Context, protocol.Address, bool) (net.Conn, bool, error) {
+		return nil, false, client.ErrCapacity
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	tr, closeTransport := p.httpTransport(ctx)
+	defer closeTransport()
+	for _, method := range []string{"GET", "CONNECT"} {
+		r := httptest.NewRequest(method, "http://origin.test:80/", nil)
+		r.Host = "origin.test:80"
+		w := httptest.NewRecorder()
+		p.httpHandler(tr).ServeHTTP(w, r)
+		if w.Code != http.StatusServiceUnavailable {
+			t.Fatalf("%s overload returned %d", method, w.Code)
+		}
 	}
 }

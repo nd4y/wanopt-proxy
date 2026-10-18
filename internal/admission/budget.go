@@ -1,7 +1,12 @@
 // Package admission provides nonblocking, process-wide resource budgets.
 package admission
 
-import "sync"
+import (
+	"errors"
+	"sync"
+)
+
+var ErrCapacity = errors.New("tunnel request capacity reached")
 
 type Budget struct {
 	slots   chan struct{}

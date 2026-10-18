@@ -33,7 +33,7 @@ const (
 )
 
 var (
-	ErrCapacity = errors.New("tunnel request capacity reached")
+	ErrCapacity = admission.ErrCapacity
 	ErrClosed   = errors.New("tunnel client is closed")
 )
 
@@ -245,6 +245,9 @@ func openTunnelStream(ctx context.Context, live *liveConn, authority string) (*h
 	resp, err := str.ReadResponse()
 	if err != nil {
 		return nil, err
+	}
+	if resp.StatusCode == http.StatusServiceUnavailable {
+		return nil, fmt.Errorf("%w: CONNECT unavailable", ErrCapacity)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("tunnel CONNECT status %d", resp.StatusCode)

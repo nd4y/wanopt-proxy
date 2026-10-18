@@ -157,7 +157,7 @@ func (p *Proxy) socksConnect(ctx context.Context, conn net.Conn, addr protocol.A
 }
 
 func (p *Proxy) countDialErr(err error) {
-	if p.m == nil {
+	if p.m == nil || errors.Is(err, client.ErrCapacity) {
 		return
 	}
 	var de *client.DialError

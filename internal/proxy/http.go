@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"wanopt/internal/client"
 	"wanopt/internal/protocol"
 )
 
@@ -180,7 +181,7 @@ func (p *Proxy) httpHandler(tr *http.Transport) http.Handler {
 			return nil
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			rejectHTTP(w, r, "upstream unavailable", http.StatusBadGateway)
+			rejectHTTP(w, r, "upstream unavailable", capacityHTTPStatus(err))
 		},
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -284,7 +285,7 @@ func (p *Proxy) httpConnect(w http.ResponseWriter, r *http.Request) {
 	remote, compressed, err := p.dialStream(r.Context(), a, p.compressionEnabled())
 	if err != nil {
 		p.countDialErr(err)
-		rejectHTTP(w, r, "upstream unavailable", http.StatusBadGateway)
+		rejectHTTP(w, r, "upstream unavailable", capacityHTTPStatus(err))
 		return
 	}
 	defer remote.Close()
@@ -328,4 +329,11 @@ func ensurePort(hostport, defaultPort string) string {
 		return net.JoinHostPort(hostport, defaultPort)
 	}
 	return hostport
+}
+
+func capacityHTTPStatus(err error) int {
+	if errors.Is(err, client.ErrCapacity) {
+		return http.StatusServiceUnavailable
+	}
+	return http.StatusBadGateway
 }
