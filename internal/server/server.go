@@ -213,6 +213,18 @@ func (s *Server) handleConn(ctx context.Context, conn *quic.Conn) {
 	stop := context.AfterFunc(ctx, func() { conn.CloseWithError(0, "server shutting down") })
 	defer stop()
 	cs := &connState{s: s, conn: conn, authed: make(chan struct{}), log: s.log, streams: make(chan struct{}, s.opt.MaxStreamsPerConnection)}
+	// The deadline starts at accept, not when the peer eventually opens control.
+	// Transport keepalives and ordinary cover requests cannot renew it.
+	cs.authTimer = time.AfterFunc(s.opt.HandshakeTimeout, func() {
+		select {
+		case <-cs.authed:
+			return
+		default:
+			s.opt.Metrics.Failure("auth", context.DeadlineExceeded)
+			conn.CloseWithError(1, "authentication timeout")
+		}
+	})
+	defer cs.authTimer.Stop()
 	cs.nat = newUDPNAT(conn.Context(), conn, s.opt.Resolver, cs.authed, s.opt.UDP, s.opt.Metrics, s.log)
 	s.mu.Lock()
 	s.states[conn] = cs
@@ -239,6 +251,7 @@ type connState struct {
 	controlStarted atomic.Bool
 	streams        chan struct{}
 	authKey        atomic.Pointer[[32]byte]
+	authTimer      *time.Timer
 }
 
 func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
@@ -316,6 +329,7 @@ func (cs *connState) handleControl(str tunnel.Stream) {
 				return errors.New("tunnel: key revoked during authentication")
 			}
 			close(cs.authed)
+			cs.authTimer.Stop()
 			return nil
 		})
 	}
