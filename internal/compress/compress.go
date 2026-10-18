@@ -9,6 +9,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"time"
 )
 
 const (
@@ -46,28 +47,77 @@ func Copy(dst io.Writer, src io.Reader) (int64, error) {
 
 // CopyCounted reports uncompressed bytes after a complete block reaches dst.
 func CopyCounted(dst io.Writer, src io.Reader, onPayload func(int)) (int64, error) {
+	return CopyObserved(dst, src, onPayload, nil)
+}
+
+// Stats is aggregated once per MiB or on return; it never labels payloads.
+type Stats struct {
+	InputBytes, OutputBytes, Attempted, Skipped, Compressed int64
+	EncodeTime                                              time.Duration
+}
+
+// CopyObserved skips tiny inputs and backs off after three unsuccessful probes.
+// It never buffers extra source reads, preserving interactive latency.
+func CopyObserved(dst io.Writer, src io.Reader, onPayload func(int), observe func(Stats)) (int64, error) {
 	frame := make([]byte, blockSize+5)
 	buf := frame[5:]
 	var compressed bytes.Buffer
-	w := encoder(&compressed)
-	defer release(w)
+	var w *flate.Writer
+	defer func() {
+		if w != nil {
+			release(w)
+		}
+	}()
+	var stats Stats
+	flush := func() {
+		if observe != nil && stats.InputBytes > 0 {
+			observe(stats)
+			stats = Stats{}
+		}
+	}
+	defer flush()
+	misses, skipBytes := 0, 0
 	var total int64
 	emptyReads := 0
 	for {
 		n, readErr := src.Read(buf)
 		if n > 0 {
 			emptyReads = 0
-			compressed.Reset()
-			w.Reset(&compressed)
-			if _, err := w.Write(buf[:n]); err != nil {
-				return total, err
-			}
-			if err := w.Close(); err != nil {
-				return total, err
-			}
 			mode, data := markerRaw, buf[:n]
-			if compressed.Len()*100 < n*90 {
-				mode, data = markerFlate, compressed.Bytes()
+			if n < 256 || skipBytes > 0 {
+				stats.Skipped++
+				skipBytes = max(0, skipBytes-n)
+			} else {
+				compressed.Reset()
+				if w == nil {
+					w = encoder(&compressed)
+				} else {
+					w.Reset(&compressed)
+				}
+				var start time.Time
+				if observe != nil {
+					start = time.Now()
+				}
+				if _, err := w.Write(buf[:n]); err != nil {
+					return total, err
+				}
+				if err := w.Close(); err != nil {
+					return total, err
+				}
+				if observe != nil {
+					stats.EncodeTime += time.Since(start)
+				}
+				stats.Attempted++
+				if compressed.Len()*100 < n*90 {
+					mode, data = markerFlate, compressed.Bytes()
+					misses = 0
+					stats.Compressed++
+				} else {
+					misses++
+					if misses >= 3 {
+						skipBytes = 256 * 1024
+					}
+				}
 			}
 			header := frame[:5]
 			header[0] = mode
@@ -82,6 +132,11 @@ func CopyCounted(dst io.Writer, src io.Reader, onPayload func(int)) (int64, erro
 				return total, err
 			}
 			total += int64(n)
+			stats.InputBytes += int64(n)
+			stats.OutputBytes += int64(5 + len(data))
+			if stats.InputBytes >= 1<<20 {
+				flush()
+			}
 			if onPayload != nil {
 				onPayload(n)
 			}

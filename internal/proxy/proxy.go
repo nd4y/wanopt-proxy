@@ -218,7 +218,7 @@ func (p *Proxy) relay(ctx context.Context, localR io.Reader, local, remote net.C
 			if p.m != nil {
 				onPayload = func(n int) { p.m.AddUp(int64(n)) }
 			}
-			_, err = compress.CopyCounted(remote, localR, onPayload)
+			_, err = compress.CopyObserved(remote, localR, onPayload, p.m.Compression)
 		} else {
 			_, err = io.Copy(p.countWriter(remote, true), localR)
 		}

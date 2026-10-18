@@ -31,15 +31,23 @@ func main() {
 		log.Error("config", "err", err)
 		os.Exit(1)
 	}
+	if !tunnel.CongestionAvailable(cfg.CongestionControl) {
+		log.Error("requested congestion controller is unavailable in this build")
+		os.Exit(1)
+	}
 	psk, _ := config.DecodePSK(cfg.PSK)
+	var previousPSK []byte
+	if cfg.PreviousPSK != "" {
+		previousPSK, _ = config.DecodePSK(cfg.PreviousPSK)
+	}
 
 	var certPEM, keyPEM []byte
 	if cfg.CertFile != "" {
-		if certPEM, err = os.ReadFile(cfg.CertFile); err != nil {
+		if certPEM, err = readCredentialFile(cfg.CertFile); err != nil {
 			log.Error("read cert", "err", err)
 			os.Exit(1)
 		}
-		if keyPEM, err = os.ReadFile(cfg.KeyFile); err != nil {
+		if keyPEM, err = readCredentialFile(cfg.KeyFile); err != nil {
 			log.Error("read key", "err", err)
 			os.Exit(1)
 		}
@@ -86,8 +94,10 @@ func main() {
 		log.Info("metrics listening", "addr", cfg.MetricsListen)
 	}
 
-	srv := server.New(server.Options{
-		PSK:                     psk,
+	srv := server.New(server.Options{CongestionControl: cfg.CongestionControl,
+		MaxActiveStreams: cfg.MaxActiveStreams, MaxCompressedStreams: cfg.MaxCompressedStreams,
+		PSK:         psk,
+		PreviousPSK: previousPSK, PreviousPSKExpires: cfg.PreviousPSKExpires,
 		HandshakeTimeout:        time.Duration(cfg.HandshakeTimeoutSec) * time.Second,
 		RequestTimeout:          time.Duration(cfg.RequestTimeoutSec) * time.Second,
 		MaxConnections:          cfg.MaxConnections,
@@ -106,6 +116,11 @@ func main() {
 		MaxConnRecvWindow:       uint64(cfg.MaxConnRecvWindowMB) << 20,
 		Log:                     log,
 	})
+	reloadSignals := make(chan os.Signal, 1)
+	signal.Notify(reloadSignals, syscall.Signal(1))
+	defer signal.Stop(reloadSignals)
+	workers.Add(1)
+	go func() { defer workers.Done(); watchCredentials(ctx, *cfgPath, *cfg, srv, log, reloadSignals) }()
 	err = srv.ListenAndServe(ctx, cfg.Listen)
 	failed := err != nil && ctx.Err() == nil
 	stop()

@@ -17,6 +17,7 @@ import (
 	"wanopt/internal/config"
 	"wanopt/internal/metrics"
 	"wanopt/internal/proxy"
+	"wanopt/internal/tunnel"
 )
 
 func main() {
@@ -28,6 +29,10 @@ func main() {
 	cfg, err := config.LoadClient(*cfgPath)
 	if err != nil {
 		log.Error("config", "err", err)
+		os.Exit(1)
+	}
+	if !tunnel.CongestionAvailable(cfg.CongestionControl) {
+		log.Error("requested congestion controller is unavailable in this build")
 		os.Exit(1)
 	}
 	psk, _ := config.DecodePSK(cfg.PSK)
@@ -49,8 +54,9 @@ func main() {
 		log.Info("metrics listening", "addr", cfg.MetricsListen)
 	}
 
-	c := client.New(client.Options{
-		Server:                   cfg.Server,
+	c := client.New(client.Options{CongestionControl: cfg.CongestionControl,
+		Server:           cfg.Server,
+		MaxActiveStreams: cfg.MaxActiveStreams, MaxCompressedStreams: cfg.MaxCompressedStreams,
 		PSK:                      psk,
 		HandshakeTimeout:         time.Duration(cfg.HandshakeTimeoutSec) * time.Second,
 		RequestTimeout:           time.Duration(cfg.RequestTimeoutSec) * time.Second,
@@ -58,14 +64,15 @@ func main() {
 		MaxUDPSessions:           cfg.MaxUDPSessions,
 		DisableSessionResumption: cfg.DisableSessionResumption,
 		Pin:                      cfg.Pin,
-		ALPN:                     cfg.ALPNOrDefault(),
-		IdleTimeout:              time.Duration(cfg.IdleTimeoutSec) * time.Second,
-		Enable0RTT:               cfg.Enable0RTT,
-		Compression:              cfg.Compression,
-		Metrics:                  m,
-		MaxStreamRecvWindow:      uint64(cfg.MaxStreamRecvWindowMB) << 20,
-		MaxConnRecvWindow:        uint64(cfg.MaxConnRecvWindowMB) << 20,
-		Log:                      log,
+		NextPin:                  cfg.NextPin, NextPinExpires: cfg.NextPinExpires,
+		ALPN:                cfg.ALPNOrDefault(),
+		IdleTimeout:         time.Duration(cfg.IdleTimeoutSec) * time.Second,
+		Enable0RTT:          cfg.Enable0RTT,
+		Compression:         cfg.Compression,
+		Metrics:             m,
+		MaxStreamRecvWindow: uint64(cfg.MaxStreamRecvWindowMB) << 20,
+		MaxConnRecvWindow:   uint64(cfg.MaxConnRecvWindowMB) << 20,
+		Log:                 log,
 	})
 	workers.Add(1)
 	go func() { defer workers.Done(); c.Run(ctx) }()

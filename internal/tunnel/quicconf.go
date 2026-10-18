@@ -13,6 +13,7 @@ const (
 )
 
 type QUICOptions struct {
+	CongestionControl   string
 	EnableDatagrams     bool
 	IdleTimeout         time.Duration
 	HandshakeTimeout    time.Duration
@@ -40,7 +41,7 @@ func NewQUICConfig(o QUICOptions) *quic.Config {
 	if o.MaxIncomingStreams == 0 {
 		o.MaxIncomingStreams = 128
 	}
-	return &quic.Config{
+	return configureCongestion(&quic.Config{
 		EnableDatagrams:      o.EnableDatagrams,
 		HandshakeIdleTimeout: o.HandshakeTimeout / 2,
 		MaxIdleTimeout:       o.IdleTimeout, KeepAlivePeriod: o.IdleTimeout / 3,
@@ -50,5 +51,5 @@ func NewQUICConfig(o QUICOptions) *quic.Config {
 		MaxConnectionReceiveWindow:     o.MaxConnRecvWindow,
 		MaxIncomingStreams:             o.MaxIncomingStreams, MaxIncomingUniStreams: 3,
 		Allow0RTT: false, TokenStore: o.TokenStore,
-	}
+	}, o.CongestionControl)
 }

@@ -19,6 +19,7 @@ import (
 
 	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
+	"wanopt/internal/admission"
 	"wanopt/internal/metrics"
 	"wanopt/internal/protocol"
 	"wanopt/internal/tunnel"
@@ -37,16 +38,20 @@ var (
 )
 
 type Options struct {
-	DisableSessionResumption bool
-	Server                   string
-	PSK                      []byte
-	Pin                      string
-	ALPN                     string
-	IdleTimeout              time.Duration
-	HandshakeTimeout         time.Duration
-	RequestTimeout           time.Duration
-	MaxPendingRequests       int
-	MaxUDPSessions           int
+	CongestionControl                      string
+	MaxActiveStreams, MaxCompressedStreams int
+	DisableSessionResumption               bool
+	Server                                 string
+	PSK                                    []byte
+	Pin                                    string
+	NextPin                                string
+	NextPinExpires                         time.Time
+	ALPN                                   string
+	IdleTimeout                            time.Duration
+	HandshakeTimeout                       time.Duration
+	RequestTimeout                         time.Duration
+	MaxPendingRequests                     int
+	MaxUDPSessions                         int
 	// Enable0RTT is a deprecated compatibility field. TLS session resumption is
 	// always enabled, but no authentication or application data uses 0-RTT.
 	Enable0RTT          bool
@@ -62,18 +67,19 @@ type liveConn struct {
 	h3   *http3.ClientConn
 }
 type Client struct {
-	opt        Options
-	tlsConf    *tls.Config
-	quicConf   *quic.Config
-	mu         sync.Mutex
-	live       *liveConn
-	ready      chan struct{}
-	stopped    bool
-	running    atomic.Bool
-	pending    chan struct{}
-	sessionSeq atomic.Uint64
-	udpMu      sync.Mutex
-	udpRoutes  map[uint64]*UDPSession
+	opt            Options
+	tlsConf        *tls.Config
+	quicConf       *quic.Config
+	mu             sync.Mutex
+	live           *liveConn
+	ready          chan struct{}
+	stopped        bool
+	running        atomic.Bool
+	pending        chan struct{}
+	active, codecs *admission.Budget
+	sessionSeq     atomic.Uint64
+	udpMu          sync.Mutex
+	udpRoutes      map[uint64]*UDPSession
 }
 
 func New(opt Options) *Client {
@@ -92,18 +98,25 @@ func New(opt Options) *Client {
 	if opt.MaxUDPSessions <= 0 {
 		opt.MaxUDPSessions = 128
 	}
+	if opt.MaxActiveStreams <= 0 {
+		opt.MaxActiveStreams = 128
+	}
+	if opt.MaxCompressedStreams <= 0 {
+		opt.MaxCompressedStreams = min(16, opt.MaxActiveStreams)
+	}
 	if opt.ALPN == "" {
 		opt.ALPN = tunnel.DefaultALPN
 	}
 	if opt.Log == nil {
 		opt.Log = slog.Default()
 	}
+	opt.Metrics.Controller(opt.CongestionControl)
 	var sessionCache tls.ClientSessionCache
 	if !opt.DisableSessionResumption {
 		sessionCache = tls.NewLRUClientSessionCache(32)
 	}
-	return &Client{opt: opt, tlsConf: tunnel.ClientTLSConfig(opt.Pin, opt.ALPN, sessionCache),
-		quicConf: tunnel.NewQUICConfig(tunnel.QUICOptions{EnableDatagrams: true, IdleTimeout: opt.IdleTimeout, HandshakeTimeout: opt.HandshakeTimeout,
+	return &Client{active: admission.New(opt.MaxActiveStreams, opt.Metrics.BudgetChange(false)), codecs: admission.New(opt.MaxCompressedStreams, opt.Metrics.BudgetChange(true)), opt: opt, tlsConf: tunnel.ClientTLSConfigWithRotation(opt.Pin, opt.NextPin, opt.NextPinExpires, opt.ALPN, sessionCache),
+		quicConf: tunnel.NewQUICConfig(tunnel.QUICOptions{CongestionControl: opt.CongestionControl, EnableDatagrams: true, IdleTimeout: opt.IdleTimeout, HandshakeTimeout: opt.HandshakeTimeout,
 			MaxStreamRecvWindow: opt.MaxStreamRecvWindow, MaxConnRecvWindow: opt.MaxConnRecvWindow, MaxIncomingStreams: -1, TokenStore: quic.NewLRUTokenStore(8, 8)}),
 		ready: make(chan struct{}), pending: make(chan struct{}, opt.MaxPendingRequests), udpRoutes: make(map[uint64]*UDPSession)}
 }
@@ -137,6 +150,7 @@ func (c *Client) Run(ctx context.Context) {
 			if ctx.Err() != nil {
 				return
 			}
+			c.opt.Metrics.Failure("connect", err)
 			c.opt.Log.Warn("tunnel connect failed", "err", err)
 		} else {
 			backoff = initialBackoff
@@ -313,6 +327,8 @@ type Stream struct {
 	local, remote net.Addr
 	closeOnce     sync.Once
 	writeClosed   atomic.Bool
+	release       func()
+	stopRelease   func() bool
 }
 
 var _ net.Conn = (*Stream)(nil)
@@ -327,6 +343,12 @@ func (s *Stream) CloseWrite() error {
 }
 func (s *Stream) Close() error {
 	s.closeOnce.Do(func() {
+		if s.stopRelease != nil {
+			s.stopRelease()
+		}
+		if s.release != nil {
+			s.release()
+		}
 		s.CancelRead(0)
 		if !s.writeClosed.Load() {
 			s.CancelWrite(0)
@@ -335,11 +357,27 @@ func (s *Stream) Close() error {
 	return nil
 }
 
-func (c *Client) OpenTCP(ctx context.Context, target protocol.Address, wantCompress bool) (*Stream, error) {
+func (c *Client) OpenTCP(ctx context.Context, target protocol.Address, wantCompress bool) (_ *Stream, resultErr error) {
+	start := time.Now()
+	defer func() { c.opt.Metrics.Failure("open", resultErr); c.opt.Metrics.Observe("open", time.Since(start)) }()
+	lease, admitted := c.active.TryAcquire()
+	if !admitted {
+		c.opt.Metrics.Rejected("stream")
+		return nil, ErrCapacity
+	}
+	handedOff := false
+	var codec *admission.Lease
+	defer func() {
+		if !handedOff {
+			lease.Release()
+			codec.Release()
+		}
+	}()
 	select {
 	case c.pending <- struct{}{}:
 		defer func() { <-c.pending }()
 	default:
+		c.opt.Metrics.Rejected("pending")
 		return nil, ErrCapacity
 	}
 	ctx, cancel := context.WithTimeout(ctx, c.opt.RequestTimeout)
@@ -362,7 +400,14 @@ func (c *Client) OpenTCP(ctx context.Context, target protocol.Address, wantCompr
 	defer unbind()
 	req := protocol.StreamRequest{Cmd: protocol.CmdTCPConnect, Addr: target}
 	if wantCompress && c.opt.Compression {
-		req.Flags = protocol.FlagCompress
+		var acquired bool
+		codec, acquired = c.codecs.TryAcquire()
+		if acquired {
+			req.Flags = protocol.FlagCompress
+		} else {
+			c.opt.Metrics.CodecFallback()
+		}
+		// flags are set only when a codec lease exists.
 	}
 	if _, err = req.WriteTo(str); err != nil {
 		return nil, err
@@ -379,8 +424,20 @@ func (c *Client) OpenTCP(ctx context.Context, target protocol.Address, wantCompr
 		return nil, err
 	}
 	_ = str.SetDeadline(time.Time{})
+	if flags & ^byte(protocol.FlagCompress) != 0 || (flags&protocol.FlagCompress != 0 && req.Flags&protocol.FlagCompress == 0) {
+		return nil, errors.New("tunnel: unrequested stream flags")
+	}
+	if flags&protocol.FlagCompress == 0 {
+		codec.Release()
+		codec = nil
+	}
+	var once sync.Once
+	release := func() { once.Do(func() { codec.Release(); lease.Release() }) }
+	result := &Stream{RequestStream: str, Compressed: flags&protocol.FlagCompress != 0, local: live.conn.LocalAddr(), remote: live.conn.RemoteAddr(), release: release}
+	result.stopRelease = context.AfterFunc(live.conn.Context(), release)
+	handedOff = true
 	ok = true
-	return &Stream{RequestStream: str, Compressed: flags&protocol.FlagCompress != 0, local: live.conn.LocalAddr(), remote: live.conn.RemoteAddr()}, nil
+	return result, nil
 }
 
 type DialError struct{ Status byte }

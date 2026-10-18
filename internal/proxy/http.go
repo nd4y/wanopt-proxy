@@ -96,7 +96,7 @@ func (p *Proxy) httpTransport(serverCtx context.Context) (*http.Transport, func(
 				return nil, err
 			}
 			if compressed {
-				s = newCompressedHTTPConn(s)
+				s = newCompressedHTTPConn(s, p.m.Compression)
 			}
 			c := net.Conn(&idleConn{Conn: s, timeout: p.opt.IdleTimeout})
 			if p.m != nil {

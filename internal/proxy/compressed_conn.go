@@ -23,7 +23,11 @@ type compressedHTTPConn struct {
 	done      chan struct{}
 }
 
-func newCompressedHTTPConn(wire net.Conn) net.Conn {
+func newCompressedHTTPConn(wire net.Conn, observers ...func(compress.Stats)) net.Conn {
+	var observe func(compress.Stats)
+	if len(observers) > 0 {
+		observe = observers[0]
+	}
 	app, bridge := net.Pipe()
 	c := &compressedHTTPConn{Conn: app, wire: wire, bridge: bridge, done: make(chan struct{})}
 	c.remaining.Store(2)
@@ -33,7 +37,7 @@ func newCompressedHTTPConn(wire net.Conn) net.Conn {
 			close(c.done)
 		}
 	}
-	go func() { defer finish(); compress.Copy(wire, bridge) }()
+	go func() { defer finish(); compress.CopyObserved(wire, bridge, nil, observe) }()
 	go func() {
 		defer finish()
 		if _, err := compress.Decopy(bridge, wire); err == nil {

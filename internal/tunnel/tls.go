@@ -117,6 +117,9 @@ func ServerTLSConfig(cert tls.Certificate, alpn string) *tls.Config {
 // verification and instead enforces the pinned SPKI hash. When sessionCache is
 // non-nil, ordinary TLS session resumption becomes possible; early data stays disabled.
 func ClientTLSConfig(pin, alpn string, sessionCache tls.ClientSessionCache) *tls.Config {
+	return ClientTLSConfigWithRotation(pin, "", time.Time{}, alpn, sessionCache)
+}
+func ClientTLSConfigWithRotation(pin, nextPin string, expires time.Time, alpn string, sessionCache tls.ClientSessionCache) *tls.Config {
 	return &tls.Config{
 		InsecureSkipVerify: true, // VerifyConnection enforces the configured pin, including resumed sessions.
 		MinVersion:         tls.VersionTLS13,
@@ -126,7 +129,8 @@ func ClientTLSConfig(pin, alpn string, sessionCache tls.ClientSessionCache) *tls
 			if len(state.PeerCertificates) == 0 {
 				return errors.New("tunnel: server presented no certificate")
 			}
-			if SPKIPin(state.PeerCertificates[0]) != pin {
+			got := SPKIPin(state.PeerCertificates[0])
+			if got != pin && !(nextPin != "" && got == nextPin && time.Now().Before(expires)) {
 				return errors.New("tunnel: server pin mismatch")
 			}
 			return nil

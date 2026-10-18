@@ -17,6 +17,7 @@ import (
 	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
 	"wanopt/internal/acl"
+	"wanopt/internal/admission"
 	"wanopt/internal/compress"
 	"wanopt/internal/metrics"
 	"wanopt/internal/protocol"
@@ -24,17 +25,21 @@ import (
 )
 
 type Options struct {
-	PSK                     []byte
-	Cert                    tls.Certificate
-	ALPN                    string
-	IdleTimeout             time.Duration
-	HandshakeTimeout        time.Duration
-	RequestTimeout          time.Duration
-	MaxConnections          int
-	MaxStreamsPerConnection int
-	ACL                     *acl.List
-	Resolver                *acl.Resolver
-	UDP                     UDPOptions
+	CongestionControl                      string
+	MaxActiveStreams, MaxCompressedStreams int
+	PSK                                    []byte
+	PreviousPSK                            []byte
+	PreviousPSKExpires                     time.Time
+	Cert                                   tls.Certificate
+	ALPN                                   string
+	IdleTimeout                            time.Duration
+	HandshakeTimeout                       time.Duration
+	RequestTimeout                         time.Duration
+	MaxConnections                         int
+	MaxStreamsPerConnection                int
+	ACL                                    *acl.List
+	Resolver                               *acl.Resolver
+	UDP                                    UDPOptions
 	// Allow0RTT is ignored: application traffic always follows a full TLS handshake.
 	Allow0RTT           bool
 	Compression         bool
@@ -46,13 +51,15 @@ type Options struct {
 }
 
 type Server struct {
-	opt     Options
-	tlsConf *tls.Config
-	h3      *http3.Server
-	log     *slog.Logger
-	mu      sync.Mutex
-	states  map[*quic.Conn]*connState
-	slots   chan struct{}
+	opt            Options
+	tlsConf        *tls.Config
+	h3             *http3.Server
+	log            *slog.Logger
+	mu             sync.Mutex
+	states         map[*quic.Conn]*connState
+	slots          chan struct{}
+	active, codecs *admission.Budget
+	credentials    *tunnel.ServerCredentials
 }
 type connContextKey struct{}
 
@@ -72,6 +79,12 @@ func New(opt Options) *Server {
 	if opt.MaxStreamsPerConnection <= 0 {
 		opt.MaxStreamsPerConnection = 128
 	}
+	if opt.MaxActiveStreams <= 0 {
+		opt.MaxActiveStreams = 128
+	}
+	if opt.MaxCompressedStreams <= 0 {
+		opt.MaxCompressedStreams = min(16, opt.MaxActiveStreams)
+	}
 	if opt.ALPN == "" {
 		opt.ALPN = tunnel.DefaultALPN
 	}
@@ -85,6 +98,11 @@ func New(opt Options) *Server {
 		opt.Decoy = http.NotFoundHandler()
 	}
 	s := &Server{opt: opt, tlsConf: tunnel.ServerTLSConfig(opt.Cert, opt.ALPN), log: opt.Log, states: make(map[*quic.Conn]*connState), slots: make(chan struct{}, opt.MaxConnections)}
+	s.credentials = tunnel.NewServerCredentials(opt.PSK, opt.PreviousPSK, opt.PreviousPSKExpires, opt.Cert)
+	s.tlsConf = s.credentials.TLSConfig(opt.ALPN)
+	opt.Metrics.Controller(opt.CongestionControl)
+	s.active = admission.New(opt.MaxActiveStreams, opt.Metrics.BudgetChange(false))
+	s.codecs = admission.New(opt.MaxCompressedStreams, opt.Metrics.BudgetChange(true))
 	s.h3 = &http3.Server{Handler: http.HandlerFunc(s.serveHTTP), EnableDatagrams: false, MaxHeaderBytes: 16 << 10, IdleTimeout: opt.IdleTimeout, Logger: opt.Log,
 		ConnContext: func(ctx context.Context, c *quic.Conn) context.Context {
 			s.mu.Lock()
@@ -97,7 +115,7 @@ func New(opt Options) *Server {
 }
 
 func (s *Server) quicConfig() *quic.Config {
-	return tunnel.NewQUICConfig(tunnel.QUICOptions{EnableDatagrams: true, IdleTimeout: s.opt.IdleTimeout, HandshakeTimeout: s.opt.HandshakeTimeout,
+	return tunnel.NewQUICConfig(tunnel.QUICOptions{CongestionControl: s.opt.CongestionControl, EnableDatagrams: true, IdleTimeout: s.opt.IdleTimeout, HandshakeTimeout: s.opt.HandshakeTimeout,
 		MaxStreamRecvWindow: s.opt.MaxStreamRecvWindow, MaxConnRecvWindow: s.opt.MaxConnRecvWindow, MaxIncomingStreams: int64(s.opt.MaxStreamsPerConnection + 1)})
 }
 
@@ -134,6 +152,20 @@ func (s *Server) Serve(ctx context.Context, ln *quic.Listener) error {
 		_ = ln.Close()
 	})
 	var wg sync.WaitGroup
+	watcherDone := make(chan struct{})
+	go func() {
+		defer close(watcherDone)
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				s.revokeUnauthorized()
+			case <-serveCtx.Done():
+				return
+			}
+		}
+	}()
 	defer func() {
 		// Cancel before taking the connection snapshot: an accepted worker may
 		// not yet be registered in states when Accept fails independently of ctx.
@@ -141,6 +173,7 @@ func (s *Server) Serve(ctx context.Context, ln *quic.Listener) error {
 		_ = ln.Close()
 		s.closeConnections()
 		wg.Wait()
+		<-watcherDone
 		if !stop() {
 			<-listenerClosed
 		}
@@ -159,6 +192,7 @@ func (s *Server) Serve(ctx context.Context, ln *quic.Listener) error {
 			wg.Add(1)
 			go func() { defer wg.Done(); defer func() { <-s.slots }(); s.handleConn(serveCtx, conn) }()
 		default:
+			s.opt.Metrics.Rejected("connection")
 			conn.CloseWithError(1, "connection capacity reached")
 		}
 	}
@@ -204,6 +238,7 @@ type connState struct {
 	authed         chan struct{}
 	controlStarted atomic.Bool
 	streams        chan struct{}
+	authKey        atomic.Pointer[[32]byte]
 }
 
 func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
@@ -232,10 +267,22 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "authentication required", http.StatusForbidden)
 			return
 		}
+		if id := cs.authKey.Load(); id == nil || !s.credentials.Accepts(*id) {
+			http.Error(w, "credentials revoked", http.StatusForbidden)
+			return
+		}
+		lease, ok := s.active.TryAcquire()
+		if !ok {
+			s.opt.Metrics.Rejected("stream")
+			http.Error(w, "global stream capacity reached", http.StatusServiceUnavailable)
+			return
+		}
+		defer lease.Release()
 		select {
 		case cs.streams <- struct{}{}:
 			defer func() { <-cs.streams }()
 		default:
+			s.opt.Metrics.Rejected("stream")
 			http.Error(w, "stream capacity reached", http.StatusServiceUnavailable)
 			return
 		}
@@ -257,16 +304,26 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cs *connState) handleControl(str tunnel.Stream) {
+	authStart := time.Now()
 	ctx, cancel := context.WithTimeout(cs.conn.Context(), cs.s.opt.HandshakeTimeout)
 	unbind := tunnel.BindContext(ctx, str)
 	tlsState := cs.conn.ConnectionState().TLS
 	exporter, err := tlsState.ExportKeyingMaterial(tunnel.ExporterLabel, nil, 32)
 	if err == nil {
-		err = tunnel.ServerAuth(str, cs.s.opt.PSK, exporter, func() { close(cs.authed) })
+		err = cs.s.credentials.Authenticate(str, exporter, func(id [32]byte) error {
+			cs.authKey.Store(&id)
+			if !cs.s.credentials.Accepts(id) {
+				return errors.New("tunnel: key revoked during authentication")
+			}
+			close(cs.authed)
+			return nil
+		})
 	}
+	cs.s.opt.Metrics.Observe("auth", time.Since(authStart))
 	unbind()
 	cancel()
 	if err != nil {
+		cs.s.opt.Metrics.Failure("auth", err)
 		cs.conn.CloseWithError(1, "authentication failed")
 		return
 	}
@@ -314,6 +371,7 @@ func (cs *connState) handleProxy(str tunnel.Stream) {
 	}
 	remote, err := cs.s.opt.Resolver.DialContext(ctx, "tcp", req.Addr)
 	if err != nil {
+		cs.s.opt.Metrics.Failure("dial", err)
 		status := dialStatus(err)
 		if errors.Is(err, acl.ErrDenied) {
 			status = protocol.StatusNotAllowed
@@ -325,6 +383,15 @@ func (cs *connState) handleProxy(str tunnel.Stream) {
 	}
 	defer remote.Close()
 	useComp := cs.s.opt.Compression && req.Flags&protocol.FlagCompress != 0
+	if useComp {
+		lease, ok := cs.s.codecs.TryAcquire()
+		if ok {
+			defer lease.Release()
+		} else {
+			useComp = false
+			cs.s.opt.Metrics.CodecFallback()
+		}
+	}
 	var flags byte
 	if useComp {
 		flags = protocol.FlagCompress
@@ -373,7 +440,7 @@ func (cs *connState) pipe(str tunnel.Stream, remote net.Conn, useComp bool) {
 	go func() {
 		var err error
 		if useComp {
-			_, err = compress.CopyCounted(str, remote, func(n int) { m.AddDown(int64(n)) })
+			_, err = compress.CopyObserved(str, remote, func(n int) { m.AddDown(int64(n)) }, m.Compression)
 		} else {
 			_, err = io.Copy(m.Writer(str, "down"), remote)
 		}
@@ -384,6 +451,7 @@ func (cs *connState) pipe(str tunnel.Stream, remote net.Conn, useComp bool) {
 	}()
 	for range 2 {
 		if err := <-results; err != nil {
+			m.Failure("relay", err)
 			tunnel.Abort(str)
 			remote.Close()
 		}

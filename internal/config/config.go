@@ -3,6 +3,7 @@ package config
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -36,13 +38,18 @@ type Decoy struct {
 
 // Server holds server-side settings.
 type Server struct {
-	HandshakeTimeoutSec     int `yaml:"handshake_timeout_sec"`
-	RequestTimeoutSec       int `yaml:"request_timeout_sec"`
-	MaxConnections          int `yaml:"max_connections"`
-	MaxStreamsPerConnection int `yaml:"max_streams_per_connection"`
-	DNSTimeoutSec           int `yaml:"dns_timeout_sec"`
-	DNSConcurrency          int `yaml:"dns_concurrency"`
-	UDP                     UDP `yaml:"udp"`
+	CongestionControl       string    `yaml:"congestion_control"`
+	PreviousPSK             string    `yaml:"previous_psk"`
+	PreviousPSKExpires      time.Time `yaml:"previous_psk_expires"`
+	MaxActiveStreams        int       `yaml:"max_active_streams"`
+	MaxCompressedStreams    int       `yaml:"max_compressed_streams"`
+	HandshakeTimeoutSec     int       `yaml:"handshake_timeout_sec"`
+	RequestTimeoutSec       int       `yaml:"request_timeout_sec"`
+	MaxConnections          int       `yaml:"max_connections"`
+	MaxStreamsPerConnection int       `yaml:"max_streams_per_connection"`
+	DNSTimeoutSec           int       `yaml:"dns_timeout_sec"`
+	DNSConcurrency          int       `yaml:"dns_concurrency"`
+	UDP                     UDP       `yaml:"udp"`
 	// Ephemeral certificates are only for explicit local experiments.
 	AllowEphemeralCert bool `yaml:"allow_ephemeral_cert"`
 	// Listen is the UDP address the QUIC listener binds to, e.g. ":4242"
@@ -75,15 +82,20 @@ type Server struct {
 
 // Client holds client-side settings.
 type Client struct {
-	HandshakeTimeoutSec          int  `yaml:"handshake_timeout_sec"`
-	RequestTimeoutSec            int  `yaml:"request_timeout_sec"`
-	MaxPendingRequests           int  `yaml:"max_pending_requests"`
-	MaxUDPSessions               int  `yaml:"max_udp_sessions"`
-	MaxConnections               int  `yaml:"max_connections"`
-	ProxyIdleTimeoutSec          int  `yaml:"proxy_idle_timeout_sec"`
-	HTTPResponseHeaderTimeoutSec int  `yaml:"http_response_header_timeout_sec"`
-	MaxHeaderBytes               int  `yaml:"max_header_bytes"`
-	AllowRemoteProxy             bool `yaml:"allow_remote_proxy"`
+	CongestionControl            string    `yaml:"congestion_control"`
+	NextPin                      string    `yaml:"next_pin"`
+	NextPinExpires               time.Time `yaml:"next_pin_expires"`
+	MaxActiveStreams             int       `yaml:"max_active_streams"`
+	MaxCompressedStreams         int       `yaml:"max_compressed_streams"`
+	HandshakeTimeoutSec          int       `yaml:"handshake_timeout_sec"`
+	RequestTimeoutSec            int       `yaml:"request_timeout_sec"`
+	MaxPendingRequests           int       `yaml:"max_pending_requests"`
+	MaxUDPSessions               int       `yaml:"max_udp_sessions"`
+	MaxConnections               int       `yaml:"max_connections"`
+	ProxyIdleTimeoutSec          int       `yaml:"proxy_idle_timeout_sec"`
+	HTTPResponseHeaderTimeoutSec int       `yaml:"http_response_header_timeout_sec"`
+	MaxHeaderBytes               int       `yaml:"max_header_bytes"`
+	AllowRemoteProxy             bool      `yaml:"allow_remote_proxy"`
 	// DisableSessionResumption turns off the TLS session cache. No 0-RTT data is sent.
 	DisableSessionResumption bool `yaml:"disable_session_resumption"`
 	// Server is the QUIC server address, host:port.
@@ -132,6 +144,9 @@ func DecodePSK(s string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("config: psk must be base64: %w", err)
 	}
+	if len(b) > 256 {
+		return nil, errors.New("config: psk exceeds 256 bytes")
+	}
 	if len(b) < 16 {
 		return nil, errors.New("config: psk must be at least 16 bytes")
 	}
@@ -152,6 +167,22 @@ func LoadServer(path string) (*Server, error) {
 	var c Server
 	if err := load(path, &c); err != nil {
 		return nil, err
+	}
+	if err := validateOverlap(c.PreviousPSK, c.PreviousPSKExpires); err != nil {
+		return nil, err
+	}
+	if c.PreviousPSK != "" {
+		old, err := DecodePSK(c.PreviousPSK)
+		if err != nil {
+			return nil, err
+		}
+		primary, err := DecodePSK(c.PSK)
+		if err != nil {
+			return nil, err
+		}
+		if hmac.Equal(old, primary) {
+			return nil, errors.New("config: previous_psk equals primary")
+		}
 	}
 	if c.Listen == "" {
 		c.Listen = ":4242"
@@ -200,11 +231,21 @@ func LoadServer(path string) (*Server, error) {
 			}
 		}
 	}
+	if c.CongestionControl == "" {
+		c.CongestionControl = "reno"
+	}
+	if c.CongestionControl != "reno" && c.CongestionControl != "bbr" {
+		return nil, errors.New("config: congestion_control must be reno or bbr")
+	}
+	if c.MaxActiveStreams == 0 {
+		c.MaxActiveStreams = 128
+	}
 	checks := []struct {
 		p             *int
 		name          string
 		def, min, max int
 	}{
+		{&c.MaxActiveStreams, "max_active_streams", 128, 1, 4096}, {&c.MaxCompressedStreams, "max_compressed_streams", min(16, c.MaxActiveStreams), 1, 128},
 		{&c.MaxConnections, "max_connections", 256, 1, 65536}, {&c.MaxStreamsPerConnection, "max_streams_per_connection", 128, 2, 4096},
 		{&c.DNSTimeoutSec, "dns_timeout_sec", 5, 1, 60}, {&c.DNSConcurrency, "dns_concurrency", 32, 1, 256},
 		{&c.UDP.MaxFlows, "udp.max_flows", 256, 1, 65536}, {&c.UDP.QueueSize, "udp.queue_size", 128, 1, 4096},
@@ -216,6 +257,9 @@ func LoadServer(path string) (*Server, error) {
 			return nil, err
 		}
 	}
+	if c.MaxCompressedStreams > c.MaxActiveStreams {
+		return nil, errors.New("config: max_compressed_streams exceeds max_active_streams")
+	}
 	return &c, nil
 }
 func LoadClient(path string) (*Client, error) {
@@ -225,6 +269,18 @@ func LoadClient(path string) (*Client, error) {
 	}
 	if err := validateEndpoint(c.Server, true); err != nil {
 		return nil, fmt.Errorf("config: server: %w", err)
+	}
+	if err := validateOverlap(c.NextPin, c.NextPinExpires); err != nil {
+		return nil, err
+	}
+	if c.NextPin != "" {
+		next, err := base64.StdEncoding.DecodeString(c.NextPin)
+		if err != nil || len(next) != 32 {
+			return nil, errors.New("config: invalid next_pin")
+		}
+		if c.NextPin == c.Pin {
+			return nil, errors.New("config: next_pin equals current pin")
+		}
 	}
 	pin, err := base64.StdEncoding.DecodeString(c.Pin)
 	if err != nil || len(pin) != 32 {
@@ -255,11 +311,21 @@ func LoadClient(path string) (*Client, error) {
 	if c.SOCKSListen != "" && c.SOCKSListen == c.HTTPListen {
 		return nil, errors.New("config: proxy listeners overlap")
 	}
+	if c.CongestionControl == "" {
+		c.CongestionControl = "reno"
+	}
+	if c.CongestionControl != "reno" && c.CongestionControl != "bbr" {
+		return nil, errors.New("config: congestion_control must be reno or bbr")
+	}
+	if c.MaxActiveStreams == 0 {
+		c.MaxActiveStreams = 128
+	}
 	checks := []struct {
 		p             *int
 		name          string
 		def, min, max int
 	}{
+		{&c.MaxActiveStreams, "max_active_streams", 128, 1, 4096}, {&c.MaxCompressedStreams, "max_compressed_streams", min(16, c.MaxActiveStreams), 1, 128},
 		{&c.MaxConnections, "max_connections", 256, 1, 65536}, {&c.MaxPendingRequests, "max_pending_requests", 256, 1, 65536},
 		{&c.MaxUDPSessions, "max_udp_sessions", 128, 1, 65536}, {&c.ProxyIdleTimeoutSec, "proxy_idle_timeout_sec", 300, 1, 86400},
 		{&c.HTTPResponseHeaderTimeoutSec, "http_response_header_timeout_sec", 120, 1, 3600}, {&c.MaxHeaderBytes, "max_header_bytes", 65536, 1024, 1048576},
@@ -268,6 +334,9 @@ func LoadClient(path string) (*Client, error) {
 		if err := bounded(v.p, v.name, v.def, v.min, v.max); err != nil {
 			return nil, err
 		}
+	}
+	if c.MaxCompressedStreams > c.MaxActiveStreams {
+		return nil, errors.New("config: max_compressed_streams exceeds max_active_streams")
 	}
 	return &c, nil
 }

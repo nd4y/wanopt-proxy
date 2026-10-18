@@ -16,21 +16,27 @@ import (
 
 type statsSource interface{ ConnectionStats() quic.ConnectionStats }
 type Metrics struct {
-	reg            *prometheus.Registry
-	ActiveStreams  prometheus.Gauge
-	StreamsTotal   prometheus.Counter
-	DialErrors     prometheus.Counter
-	Bytes          *prometheus.CounterVec
-	Reconnects     prometheus.Counter
-	TLSResumptions prometheus.Counter
-	Connections    prometheus.Gauge
-	udpDrops       *prometheus.CounterVec
-	udpPackets     *prometheus.CounterVec
-	udpFlows       prometheus.Gauge
-	up             prometheus.Counter
-	down           prometheus.Counter
-	mu             sync.Mutex
-	connections    map[statsSource]struct{}
+	reg                                                                                 *prometheus.Registry
+	ActiveBudget, CodecBudget                                                           prometheus.Gauge
+	controller                                                                          *prometheus.GaugeVec
+	latency                                                                             *prometheus.HistogramVec
+	rejected, failures                                                                  *prometheus.CounterVec
+	codecFallback                                                                       prometheus.Counter
+	codecInput, codecOutput, codecAttempts, codecSkipped, codecCompressed, codecSeconds prometheus.Counter
+	ActiveStreams                                                                       prometheus.Gauge
+	StreamsTotal                                                                        prometheus.Counter
+	DialErrors                                                                          prometheus.Counter
+	Bytes                                                                               *prometheus.CounterVec
+	Reconnects                                                                          prometheus.Counter
+	TLSResumptions                                                                      prometheus.Counter
+	Connections                                                                         prometheus.Gauge
+	udpDrops                                                                            *prometheus.CounterVec
+	udpPackets                                                                          *prometheus.CounterVec
+	udpFlows                                                                            prometheus.Gauge
+	up                                                                                  prometheus.Counter
+	down                                                                                prometheus.Counter
+	mu                                                                                  sync.Mutex
+	connections                                                                         map[statsSource]struct{}
 }
 
 func New(side string) *Metrics {
@@ -38,7 +44,18 @@ func New(side string) *Metrics {
 	cl := prometheus.Labels{"side": side}
 	f := promauto(reg, cl)
 	m := &Metrics{
-		reg: reg, connections: make(map[statsSource]struct{}),
+		ActiveBudget:    f.gauge("wanopt_admitted_streams", "Active process-wide stream leases"),
+		CodecBudget:     f.gauge("wanopt_admitted_codecs", "Active compressed-stream leases"),
+		rejected:        f.counterVec("wanopt_admission_rejected_total", "Immediate capacity rejections", "resource"),
+		failures:        f.counterVec("wanopt_operation_failures_total", "Operation failures by bounded stage and reason", "stage", "reason"),
+		codecFallback:   f.counter("wanopt_codec_capacity_fallback_total", "Streams using raw mode because codec capacity is full"),
+		codecInput:      f.counter("wanopt_compression_input_bytes_total", "Payload bytes evaluated by the block encoder"),
+		codecOutput:     f.counter("wanopt_compression_output_bytes_total", "Encoded bytes including framing"),
+		codecAttempts:   f.counter("wanopt_compression_attempts_total", "DEFLATE attempts"),
+		codecSkipped:    f.counter("wanopt_compression_skipped_total", "Blocks sent raw without attempting DEFLATE"),
+		codecCompressed: f.counter("wanopt_compression_blocks_total", "Blocks sent compressed"),
+		codecSeconds:    f.counter("wanopt_compression_encode_seconds_total", "Wall time spent encoding attempted blocks"),
+		reg:             reg, connections: make(map[statsSource]struct{}),
 		ActiveStreams:  f.gauge("wanopt_active_streams", "Currently open proxy streams"),
 		StreamsTotal:   f.counter("wanopt_streams_total", "Total proxy streams opened"),
 		DialErrors:     f.counter("wanopt_dial_errors_total", "Failed dial/connect attempts"),
@@ -50,6 +67,10 @@ func New(side string) *Metrics {
 		udpPackets:     f.counterVec("wanopt_udp_datagrams_total", "Successfully relayed UDP datagrams", "dir"),
 		udpFlows:       f.gauge("wanopt_udp_flows", "Active outbound UDP sockets"),
 	}
+	m.controller = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "wanopt_congestion_controller", Help: "Configured userspace QUIC congestion controller", ConstLabels: cl}, []string{"algorithm"})
+	reg.MustRegister(m.controller)
+	m.latency = prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "wanopt_operation_seconds", Help: "Operation duration including bounded admission wait", ConstLabels: cl, Buckets: []float64{.001, .005, .01, .025, .05, .1, .25, .5, 1, 2, 5, 10, 30}}, []string{"stage"})
+	reg.MustRegister(m.latency)
 	m.up = m.Bytes.WithLabelValues("up")
 	m.down = m.Bytes.WithLabelValues("down")
 	reg.MustRegister(&connectionCollector{m: m,
