@@ -1,0 +1,47 @@
+{
+  "client": {
+    "tcp_congestion_control": "bbr",
+    "udp": {
+      "InDatagrams": 20446488,
+      "NoPorts": 0,
+      "InErrors": 0,
+      "OutDatagrams": 25093178,
+      "RcvbufErrors": 0,
+      "SndbufErrors": 366,
+      "InCsumErrors": 0,
+      "IgnoredMulti": 0,
+      "MemErrors": 0
+    },
+    "memory_events": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 0,
+      "oom_group_kill": 0
+    }
+  },
+  "server": {
+    "tcp_congestion_control": "bbr",
+    "udp": {
+      "InDatagrams": 25061756,
+      "NoPorts": 0,
+      "InErrors": 0,
+      "OutDatagrams": 20475996,
+      "RcvbufErrors": 0,
+      "SndbufErrors": 0,
+      "InCsumErrors": 0,
+      "IgnoredMulti": 0,
+      "MemErrors": 0
+    },
+    "memory_events": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 0,
+      "oom_group_kill": 0,
+      "sock_throttled": 0
+    }
+  }
+}

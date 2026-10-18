@@ -1,0 +1,21 @@
+{
+  "source_base": "88fbe38901713ff2975870f89b33e20de86c258d",
+  "baseline": "5c3d1ff0e3f77d8edfc3aecfefe18768d8fcb29c",
+  "patch_sha256": {
+    "wanopt.patch": "555634f3cf3f8e6864b040553b2af38bef632f001df957e1442c406d317cdad2",
+    "quic-go.patch": "8886dbbfbb04858301a32a14cf13ffae9a57c158c7d1bfdfda468a4cd8816dc2"
+  },
+  "binary_sha256": {
+    "wanbench": "15554faa8a55faddbba7f4c3a2033d3a9797cc4250f6aa50aed8f07ab384d142",
+    "wanopt-client": "cef1eb89df5b00ee01d751cdc84596d83de76d188680fe1d6350182d45b31768",
+    "wanopt-server": "a8d694ba1bab261fd6c776935cbb7ab0eca5a22d269093e20cb3de14b607898c"
+  },
+  "test_script_sha256": {
+    "master.py": "6102375995a8f3de514e36fdeb97b0a1a6959fa8aa6932682cd4b047a6a4a06d",
+    "functional.py": "98101d292c1e04e720959a4d13dd00804e4f348d16301b3163a9f2f30353c4a3",
+    "remote-ns.py": "a9edf7112f96febc1d91293796e6a6e80acd3bdbcb8727dbe00fa94529aa23aa",
+    "remote-mix.py": "6d19a7480fb9f076258a49c6fda615ffab74577223e9f2d7786e4f5ee388afd2",
+    "setup.py": "e3d50f01d7547510804788151b83bc7c38300f5c11a60c0061603423f9367901",
+    "resource-stats.py": "8e55054093ed08eafe207060c795e2328cafee9f6da1988340f4fe9e4039bfee"
+  }
+}

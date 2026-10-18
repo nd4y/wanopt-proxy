@@ -1,0 +1,28 @@
+File: relay-linux.test
+Build ID: b0022d28f2706e2bc9a830201546ad8c97632e7e
+Type: alloc_space
+Time: 2026-10-18 16:27:56 MSK
+Showing nodes accounting for 17157.58MB, 97.64% of 17571.77MB total
+Dropped 345 nodes (cum <= 87.86MB)
+Showing top 20 nodes out of 63
+      flat  flat%   sum%        cum   cum%
+ 7639.88MB 43.48% 43.48%  7639.88MB 43.48%  io.ReadAll
+ 6440.22MB 36.65% 80.13%  6440.22MB 36.65%  bytes.growSlice
+ 1086.26MB  6.18% 86.31%  5045.49MB 28.71%  wanopt/internal/compress.Decopy
+  608.65MB  3.46% 89.77%   799.44MB  4.55%  wanopt/internal/compress.CopyObserved
+  341.97MB  1.95% 91.72%  3070.21MB 17.47%  io.copyBuffer
+  338.36MB  1.93% 93.65%   338.36MB  1.93%  compress/flate.(*dictDecoder).init (inline)
+  297.03MB  1.69% 95.34%   297.03MB  1.69%  github.com/quic-go/quic-go.(*frameSorter).push
+  184.01MB  1.05% 96.38%   184.01MB  1.05%  golang.org/x/net/internal/socket.parseInetAddr
+  102.44MB  0.58% 96.97%   102.44MB  0.58%  sync.(*poolChain).pushHead
+   66.76MB  0.38% 97.35%   405.11MB  2.31%  compress/flate.NewReader
+   48.50MB  0.28% 97.62%   345.53MB  1.97%  github.com/quic-go/quic-go.(*ReceiveStream).handleStreamFrameImpl
+       2MB 0.011% 97.63%  6442.23MB 36.66%  bytes.(*Buffer).grow
+    1.50MB 0.0085% 97.64%    97.01MB  0.55%  wanopt/internal/client.(*Client).OpenTCP
+         0     0% 97.64%  2725.24MB 15.51%  bytes.(*Buffer).ReadFrom
+         0     0% 97.64%  3729.01MB 21.22%  bytes.(*Buffer).Write
+         0     0% 97.64%   183.08MB  1.04%  compress/flate.(*Writer).Close (inline)
+         0     0% 97.64%   183.08MB  1.04%  compress/flate.(*compressor).close
+         0     0% 97.64%   182.58MB  1.04%  compress/flate.(*compressor).deflateFast
+         0     0% 97.64%   181.91MB  1.04%  compress/flate.(*compressor).writeStoredBlock
+         0     0% 97.64%   182.41MB  1.04%  compress/flate.(*huffmanBitWriter).write (inline)

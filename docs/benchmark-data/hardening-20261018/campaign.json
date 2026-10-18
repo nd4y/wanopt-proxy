@@ -1,0 +1,28 @@
+{
+  "start_unix": 1792331904.0,
+  "start_utc": "2026-10-18T13:58:24+00:00",
+  "source": "existing server cleanup timer activation, approximately two seconds after initial coordinator start",
+  "controller_interruption": {
+    "last_observed_elapsed": 420.2396028139992,
+    "resumed_campaign_elapsed": 4866.461280345917,
+    "unobserved_guard_seconds": 4446.2216775319175,
+    "test_processes_remained_running": true,
+    "scope": "controller/traffic-generator gap, not an application restart"
+  },
+  "controller_interruptions": [
+    {
+      "last_observed_elapsed": 420.2396028139992,
+      "resumed_campaign_elapsed": 4866.461280345917,
+      "unobserved_guard_seconds": 4446.2216775319175,
+      "test_processes_remained_running": true,
+      "scope": "controller/traffic-generator gap, not an application restart"
+    },
+    {
+      "last_observed_elapsed": 10121.19693422615,
+      "resumed_campaign_elapsed": 10409.51506447792,
+      "unobserved_guard_seconds": 288.31813025177144,
+      "test_processes_remained_running": true,
+      "scope": "second local controller interruption; original app PIDs and cumulative no-OOM verified"
+    }
+  ]
+}

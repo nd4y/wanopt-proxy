@@ -1,0 +1,18 @@
+goos: linux
+goarch: amd64
+pkg: wanopt/internal/server
+cpu: AMD Ryzen 7 8845HS w/ Radeon 780M Graphics     
+BenchmarkRelay/random/quic_raw         	     735	   3404464 ns/op	 154.00 MB/s	 1345673 B/op	    2139 allocs/op
+BenchmarkRelay/random/quic_raw         	     747	   3126493 ns/op	 167.69 MB/s	 1344699 B/op	    2137 allocs/op
+BenchmarkRelay/random/quic_raw         	     812	   3066787 ns/op	 170.96 MB/s	 1342960 B/op	    2135 allocs/op
+     630	   3533352 ns/op	 148.38 MB/s	 1564112 B/op	    2314 allocs/op
+BenchmarkRelay/random/quic_compressed  	     628	   3972868 ns/op	 131.97 MB/s	 1563471 B/op	    2311 allocs/op
+BenchmarkRelay/random/quic_compressed  	     741	   3199590 ns/op	 163.86 MB/s	 1563575 B/op	    2313 allocs/op
+     807	   3052061 ns/op	 171.78 MB/s	 1342845 B/op	    2132 allocs/op
+BenchmarkRelay/compressible/quic_raw   	     829	   3001671 ns/op	 174.67 MB/s	 1342776 B/op	    2135 allocs/op
+BenchmarkRelay/compressible/quic_raw   	     757	   3177415 ns/op	 165.00 MB/s	 1343305 B/op	    2135 allocs/op
+BenchmarkRelay/compressible/quic_compressed         	    1837	   1455798 ns/op	 360.14 MB/s	 1453252 B/op	     491 allocs/op
+BenchmarkRelay/compressible/quic_compressed         	    1610	   1696396 ns/op	 309.06 MB/s	 1453149 B/op	     491 allocs/op
+BenchmarkRelay/compressible/quic_compressed         	    1519	   1409018 ns/op	 372.09 MB/s	 1453146 B/op	     491 allocs/op
+PASS
+ok  	wanopt/internal/server	33.192s

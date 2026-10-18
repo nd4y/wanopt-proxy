@@ -1,0 +1,28 @@
+{
+  "client": {
+    "production_containers_unchanged": true,
+    "host_qdisc_unchanged": true,
+    "alloy_and_netbird_unchanged": true,
+    "temporary_resources_removed": true,
+    "disk_final": "Filesystem      1B-blocks       Used Available Use% Mounted on\n/dev/root      7203201024 6667161600 519262208  93% /\n",
+    "idle_observations": 120,
+    "memory_peak_bytes": 79749120,
+    "last_memory_bytes": 37015552,
+    "fresh_verification_utc": "2026-10-18T22:27:15.233454+00:00",
+    "empty_test_parent_slices_removed": true,
+    "fresh_disk": "Filesystem      1B-blocks       Used Available Use% Mounted on\n/dev/root      7203201024 6681526272 504897536  93% /\n"
+  },
+  "server": {
+    "production_containers_unchanged": true,
+    "host_qdisc_unchanged": true,
+    "alloy_and_netbird_unchanged": true,
+    "temporary_resources_removed": true,
+    "disk_final": "Filesystem       1B-blocks       Used   Available Use% Mounted on\n/dev/sda1      39964635136 5750484992 32524967936  16% /\n",
+    "idle_observations": 120,
+    "memory_peak_bytes": 102707200,
+    "last_memory_bytes": 58593280,
+    "fresh_verification_utc": "2026-10-18T22:27:15.237720+00:00",
+    "empty_test_parent_slices_removed": true,
+    "fresh_disk": "Filesystem       1B-blocks       Used   Available Use% Mounted on\n/dev/sda1      39964635136 5720862720 32554590208  15% /\n"
+  }
+}

@@ -1,5 +1,7 @@
 # QUIC BBR on pr4/pr5, 2026-10-18
 
+These are historical measurements from the earlier implementation. The [global-limit/adaptive-compression campaign](hardening-pr4-pr5.md) uses prebuilt fixtures, longer flows and updated failure/cleanup checks. Its results and explicit configuration supersede this report for the current branch.
+
 BBR with the existing optional block compression improved useful throughput in both directions on the two lossy profiles. It did not achieve universal acceleration: uncapped uploads with no configured loss remained slower than direct TCP, and raw BBR had regressions. Keep the normal Reno build as the default; BBR is an isolated, opt-in experiment.
 
 ## Implementation
