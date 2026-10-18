@@ -4,7 +4,7 @@ This opt-in experiment preserves the normal build and its upstream quic-go v0.64
 
 ## Reproduce
 
-Use Linux, Go toolchain download access, Git, tar, and a C compiler for race tests. The repository must contain base commit `1080dfd4a5ba4c726b72e8756dbe8f8112b6122e` (use a full checkout of this PR). From the repository root:
+Use Linux, Go toolchain download access, Git, tar, and a C compiler for race tests. The repository must contain base commit `88fbe38901713ff2975870f89b33e20de86c258d` (use a full checkout of this PR). From the repository root:
 
 ```sh
 bash experiments/bbr/build.sh /tmp/wanopt-bbr-bin
@@ -18,7 +18,7 @@ Set `congestion_control: bbr` in both YAML configs to test both directions. The 
 
 ## Provenance and integration
 
-- Wanopt base: `1080dfd4a5ba4c726b72e8756dbe8f8112b6122e`.
+- Wanopt base: `88fbe38901713ff2975870f89b33e20de86c258d`.
 - Transport: upstream [quic-go v0.64.0](https://github.com/quic-go/quic-go/releases/tag/v0.64.0), with a small connection-creation hook and ACK/loss adapter. No downgrade to the older apernet transport.
 - Controller: [Hysteria](https://github.com/HyNetworks/hysteria) BBR/common source at commit `ca8fbd874fd6ca82413948de6dc5924405e103e1`, copied from the HyNetworks repository with MIT license preserved in `wanopt.patch`.
 - Public congestion interface and adapter shape: [apernet/quic-go](https://github.com/apernet/quic-go/tree/a10df75c260c). The implementation here is a minimal port to 0.64.0, with its own adapter tests and the original license retained.
