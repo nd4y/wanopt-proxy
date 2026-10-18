@@ -75,6 +75,7 @@ func fixtures(sizes []int) (map[string]fixture, error) {
 }
 func originHandler(f map[string]fixture) http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("/stream", streamHandler(f))
 	mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "ok") })
 	mux.HandleFunc("/transfer", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
@@ -104,12 +105,14 @@ func originHandler(f map[string]fixture) http.Handler {
 }
 
 type options struct {
+	streaming                              bool
 	base, proxy, kind, direction, label    string
 	n, repeats, concurrency, abortAfter    int
 	warm                                   bool
 	duration, timeout, slowRead, slowWrite time.Duration
 }
 type worker struct {
+	lastBytes       int64
 	client          *http.Client
 	transport       *http.Transport
 	opt             options
@@ -145,6 +148,12 @@ func (r delayedReader) Read(b []byte) (int, error) {
 var errAborted = errors.New("intentional abort")
 
 func (w *worker) transfer(ctx context.Context, abort int) (float64, error) {
+	if w.opt.streaming {
+		if abort > 0 {
+			return 0, errors.New("abort probe requires finite mode")
+		}
+		return w.streamTransfer(ctx)
+	}
 	var body io.Reader
 	if w.opt.direction == "POST" {
 		body = bytes.NewReader(w.body)
@@ -212,6 +221,7 @@ func (w *worker) transfer(ctx context.Context, abort int) (float64, error) {
 	if count != int64(len(w.body)) || got != w.expected {
 		return 0, errors.New("checksum or length mismatch")
 	}
+	w.lastBytes = count
 	return time.Since(start).Seconds(), nil
 }
 func newWorker(ctx context.Context, o options, b []byte, index int) (*worker, error) {
@@ -243,7 +253,7 @@ func newWorker(ctx context.Context, o options, b []byte, index int) (*worker, er
 }
 func (w *worker) sample(v float64) {
 	w.requests++
-	w.bytes += int64(len(w.body))
+	w.bytes += w.lastBytes
 	if len(w.samples) < 4096 {
 		w.samples = append(w.samples, v)
 	} else if i := w.rng.Int63n(w.requests); i < 4096 {
@@ -268,6 +278,9 @@ func run(ctx context.Context, o options) (map[string]any, error) {
 	}
 	if o.abortAfter < 0 || o.abortAfter >= o.n {
 		return nil, errors.New("abort-after must be smaller than payload")
+	}
+	if o.streaming && (o.duration <= 0 || o.duration > 2*time.Minute || o.timeout < o.duration+5*time.Second || o.abortAfter > 0) {
+		return nil, errors.New("stream mode needs duration<=2m, timeout>=duration+5s, and no abort probe")
 	}
 	b := data(o.kind, o.n)
 	setupStart := time.Now()
@@ -297,7 +310,10 @@ func run(ctx context.Context, o options) (map[string]any, error) {
 			}
 		}
 		if o.warm {
+			mode := w.opt.streaming
+			w.opt.streaming = false
 			v, err := w.transfer(ctx, 0)
+			w.opt.streaming = mode
 			if err != nil {
 				return nil, err
 			}
@@ -351,7 +367,7 @@ func run(ctx context.Context, o options) (map[string]any, error) {
 		w.transport.CloseIdleConnections()
 	}
 	sort.Float64s(samples)
-	result := map[string]any{"label": o.label, "kind": o.kind, "direction": o.direction, "logical_bytes": o.n, "bytes": transferred, "requests": count, "seconds": seconds, "mbps": float64(transferred) * 8 / seconds / 1e6, "integrity": failure == nil, "warmed": o.warm, "connection_reused": reused, "response_close": closed, "setup_seconds": setup, "warmup_seconds": warmTime, "first_warm_transfer_seconds": first, "request_seconds_p50": quantile(samples, .5), "request_seconds_p95": quantile(samples, .95), "request_seconds_p99": quantile(samples, .99), "latency_samples": len(samples), "concurrency": o.concurrency, "goroutines_before": before, "goroutines_after": runtime.NumGoroutine(), "abort_probe": o.abortAfter > 0}
+	result := map[string]any{"streaming": o.streaming, "label": o.label, "kind": o.kind, "direction": o.direction, "logical_bytes": o.n, "bytes": transferred, "requests": count, "seconds": seconds, "mbps": float64(transferred) * 8 / seconds / 1e6, "integrity": failure == nil, "warmed": o.warm, "connection_reused": reused, "response_close": closed, "setup_seconds": setup, "warmup_seconds": warmTime, "first_warm_transfer_seconds": first, "request_seconds_p50": quantile(samples, .5), "request_seconds_p95": quantile(samples, .95), "request_seconds_p99": quantile(samples, .99), "latency_samples": len(samples), "concurrency": o.concurrency, "goroutines_before": before, "goroutines_after": runtime.NumGoroutine(), "abort_probe": o.abortAfter > 0}
 	if failure != nil {
 		result["error"] = failure.Error()
 	}
@@ -369,6 +385,7 @@ func main() {
 	flag.StringVar(&o.direction, "direction", "GET", "GET or POST")
 	flag.StringVar(&o.label, "label", "", "measurement label")
 	flag.IntVar(&o.n, "bytes", 4<<20, "logical fixture bytes, maximum8MiB")
+	flag.BoolVar(&o.streaming, "stream", false, "one continuous upload/download for duration with end-to-end checksum")
 	flag.BoolVar(&o.warm, "warm", false, "one full untimed warm transfer per worker")
 	flag.IntVar(&o.repeats, "repeats", 1, "requests per worker when duration is zero")
 	flag.IntVar(&o.concurrency, "concurrency", 1, "independent connections, maximum16")
