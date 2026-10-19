@@ -62,7 +62,9 @@ jobs:
       - name: Verify and execute the exact Windows release archive
         shell: pwsh
         run: |
-          gh release download $env:VERSION --dir release-assets
+          # Same files uploaded to the draft, without draft-release visibility
+          # requirements on this read-only verification job.
+          gh run download $env:GITHUB_RUN_ID --repo $env:GITHUB_REPOSITORY --name release-assets --dir release-assets
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/validation/verify_assets.py --dir release-assets --source $env:GITHUB_SHA
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

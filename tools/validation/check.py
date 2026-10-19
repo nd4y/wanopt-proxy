@@ -230,6 +230,37 @@ class Suite:
             raise AssertionError(f"{name}: expected gateway rejection 502, got {status}")
         self.record(name, expected_http_status=502)
 
+    def await_proxy_recovery(self, name):
+        # A deliberately expired request can leave a closing pooled upstream
+        # connection. Recovery is eventual and bounded; retain every attempt.
+        code = """import http.client,json,sys
+c=http.client.HTTPConnection('127.0.0.1',int(sys.argv[1]),timeout=float(sys.argv[3]))
+try:
+ c.request('GET',sys.argv[2],headers={'Connection':'close'})
+ r=c.getresponse();print(json.dumps({'status':r.status,'body':r.read(1024).decode(errors='replace')}))
+except Exception as e:print(json.dumps({'error':type(e).__name__}))
+finally:c.close()
+"""
+        end = time.monotonic() + 20
+        attempts = 0
+        while time.monotonic() < end:
+            if self.client.poll() is not None:
+                raise RuntimeError("client exited during recovery")
+            left = end - time.monotonic()
+            try:
+                p = command(self.net.prefix(0) + [sys.executable, "-c", code, self.proxy.rsplit(":", 1)[1],
+                                                 self.proxy_target + "/ping", str(min(3, max(.05, left - .1)))],
+                            timeout=min(5, left))
+                result = json.loads(p.stdout)
+            except (RuntimeError, subprocess.TimeoutExpired) as error:
+                result = {"error": type(error).__name__}
+            attempts += 1
+            self.report.setdefault("recovery_attempts", []).append({"case": name, "attempt": attempts, **result})
+            if result.get("status") == 200 and result.get("body") == "ok":
+                return
+            time.sleep(min(.2, max(0, end - time.monotonic())))
+        raise RuntimeError(name + ": recovery did not become available within 20 seconds")
+
     def drain(self):
         snapshots = []
         for side, url in [(0, self.cm), (1, self.sm)]:
@@ -492,6 +523,7 @@ class Suite:
                 result = task.result()
                 if not any(word in result.get("error", "").lower() for word in ["eof", "timeout"]):
                     raise AssertionError("outage failed for an unexpected reason")
+            self.await_proxy_recovery("recovery-after-idle-expiry")
             self.bench("recovery-after-idle-expiry", "POST", size=32768)
             self.drain()
             self.stop(self.client)
