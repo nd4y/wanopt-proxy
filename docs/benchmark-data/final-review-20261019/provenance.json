@@ -1,0 +1,26 @@
+{
+  "starting_head": "9af3f1458a25ed1b5ec80984aabd63f2b165eac9",
+  "runtime_fix_commit": "2cf91a1bf462b6e43284bed5c80b53d142f7f4ed",
+  "patch_sha256": {
+    "wanopt.patch": "fdf3237a395cd376afadc9a8bb8a68343cd517ab8e891c1863a85513a4d42898",
+    "quic-go.patch": "6279cf8880a994e9b1c4a5614d0ab2babb759b33e559cd307b81e5f169bbc555"
+  },
+  "loopback_binary_sha256": {
+    "wanopt-client": "05f9eb25ee0b6231ff2c99cae2e019b0597e9e46480697d06666aa9ca7b8b8cb",
+    "wanopt-server": "d4059ed669999a79d2ad32f95a9e6bac47ddb095602127d384e77206e87c82ac",
+    "wanbench": "15554faa8a55faddbba7f4c3a2033d3a9797cc4250f6aa50aed8f07ab384d142"
+  },
+  "regression_cases": 16,
+  "independent_budget_probes": 39,
+  "loopback_invocations": 16,
+  "partial_chunk_transfers": 4,
+  "local_processes_and_credentials_removed": true,
+  "recipe_validation": "Full pinned recipe is mandatory in CI; local applied sources used for regression and real-loopback tests",
+  "harness_sha256": {
+    "performance/loopback-smoke.py": "16af19fd4cd88aa14670d133f1420ba5256e5e050ecfead572d16356424b8d74",
+    "performance/loopback-smoke.sh": "a7df261b71cfdd90e71ad10d935ed520699802272a61d5f439e7955622de48b9",
+    "performance/build-smoke.sh": "034ae6131c6b10ff960880a80a6c447d2da38ff32ecd20abe1e284c4fe5321f6",
+    "stability/coherence.sh": "b1b0661d505b4540bc586bfbd8521b61a89909c510cd2f7c3b6456e5e0406db5",
+    "stability/idle-coherence_test.go": "24bfac215b8b4494f3f8f730b8ca92619a9d5d0d84c85d647d260f65ec1b8b55"
+  }
+}

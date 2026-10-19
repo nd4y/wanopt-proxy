@@ -1,5 +1,7 @@
 # UDP send discard follow-up on pr4/pr5
 
+This report records the two source/binary cohorts named below. The later [final PR review](final-review-pr2.md) fixes pacer MTU preservation and records its separate local/CI validation; the WAN throughput figures below predate that fix.
+
 The local shaping queue overflowed while BBR reused an old high-bandwidth model. The integration adapter forwarded upstream quic-go's **post-send** bytes in flight to a controller that requires **pre-send** bytes. This hid zero-flight starts and prevented the controller and sampler from recognizing drained idle periods.
 
 ## Evidence and regression

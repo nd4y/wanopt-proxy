@@ -199,4 +199,4 @@ SOCKS and CONNECT; it safely falls back when the server declines compression.
 
 For global admission, adaptive compression, bounded PSK/pin rotation, Reno/BBR selection and measurement controls, see [operations and limits](docs/operations.md).
 
-The [latest pr4/pr5 validation](docs/hardening-pr4-pr5.md) includes 900 short transfers, 108 sustained flows and a six-hour campaign with faults and mixed load. It retains improvements, regressions, controller interruptions and remaining limits.
+The [UDP send-error follow-up on pr4/pr5](docs/sndbuf-pr4-pr5.md) includes the traced cause, regression tests, 72 matrix flows, 30 minutes of mixed load and 18 final-binary invocations. The [earlier campaign](docs/hardening-pr4-pr5.md) retains 900 short transfers, 108 sustained flows, faults, controller interruptions and remaining limits.

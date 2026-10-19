@@ -1,0 +1,84 @@
+{
+  "scope": "local loopback only; no network impairment or WAN speed claim",
+  "controller": "bbr",
+  "compression": true,
+  "idle_seconds": 2,
+  "success": true,
+  "process_pids": {
+    "origin": 168130,
+    "server": 168134,
+    "client": 168135
+  },
+  "fixtures_sha256": {
+    "text:1024": "b33beb8c35aa3b0de72ee555a5a35f38f755ac4990fb261d4d7cbd099c56f9ca",
+    "text:4194304": "8c5d9467ab7f985cbe06f8dc50584186b20ea42edf5e0a7cc8c583e71403889f",
+    "random:1024": "df9acbe20c2c9f0faeeaeacfd8ade4ce16980058e76529494b598a750a90b4e4",
+    "random:4194304": "a1cb1bcb34431d0eb32645d7340a6556bd889d74bcbc7f1b47a56030690384ba"
+  },
+  "measurements": 16,
+  "partial_chunk_probes": 4,
+  "cleanup_processes": [
+    {
+      "name": "client",
+      "pid": 168135,
+      "exit_code": 0,
+      "stopped": true
+    },
+    {
+      "name": "server",
+      "pid": 168134,
+      "exit_code": 0,
+      "stopped": true
+    },
+    {
+      "name": "origin",
+      "pid": 168130,
+      "exit_code": -15,
+      "stopped": true
+    }
+  ],
+  "runtime_removed": true,
+  "binary_sha256": {
+    "wanopt-client": "05f9eb25ee0b6231ff2c99cae2e019b0597e9e46480697d06666aa9ca7b8b8cb",
+    "wanopt-server": "d4059ed669999a79d2ad32f95a9e6bac47ddb095602127d384e77206e87c82ac",
+    "wanbench": "15554faa8a55faddbba7f4c3a2033d3a9797cc4250f6aa50aed8f07ab384d142"
+  },
+  "patch_sha256": {
+    "wanopt.patch": "fdf3237a395cd376afadc9a8bb8a68343cd517ab8e891c1863a85513a4d42898",
+    "quic-go.patch": "6279cf8880a994e9b1c4a5614d0ab2babb759b33e559cd307b81e5f169bbc555"
+  },
+  "selected_metrics": {
+    "before": {
+      "client": [
+        "wanopt_admitted_codecs{side=\"client\"} 0",
+        "wanopt_admitted_streams{side=\"client\"} 0",
+        "wanopt_congestion_controller{algorithm=\"bbr\",side=\"client\"} 1",
+        "wanopt_tunnel_connections{side=\"client\"} 1",
+        "wanopt_tunnel_reconnects_total{side=\"client\"} 0"
+      ],
+      "server": [
+        "wanopt_admitted_codecs{side=\"server\"} 0",
+        "wanopt_admitted_streams{side=\"server\"} 0",
+        "wanopt_congestion_controller{algorithm=\"bbr\",side=\"server\"} 1",
+        "wanopt_tunnel_connections{side=\"server\"} 1",
+        "wanopt_tunnel_reconnects_total{side=\"server\"} 0"
+      ]
+    },
+    "after": {
+      "client": [
+        "wanopt_admitted_codecs{side=\"client\"} 0",
+        "wanopt_admitted_streams{side=\"client\"} 0",
+        "wanopt_congestion_controller{algorithm=\"bbr\",side=\"client\"} 1",
+        "wanopt_tunnel_connections{side=\"client\"} 1",
+        "wanopt_tunnel_reconnects_total{side=\"client\"} 0"
+      ],
+      "server": [
+        "wanopt_admitted_codecs{side=\"server\"} 0",
+        "wanopt_admitted_streams{side=\"server\"} 0",
+        "wanopt_congestion_controller{algorithm=\"bbr\",side=\"server\"} 1",
+        "wanopt_tunnel_connections{side=\"server\"} 1",
+        "wanopt_tunnel_reconnects_total{side=\"server\"} 0"
+      ]
+    }
+  }
+}
