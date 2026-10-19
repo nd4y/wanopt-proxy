@@ -19,6 +19,15 @@ class Observations(unittest.TestCase):
         with self.assertRaises(ValueError):
             udp_counters("Tcp: InSegs\nTcp: 5\n")
 
+    def test_closed_port_exception_never_hides_send_buffer_errors(self):
+        with self.assertRaises(AssertionError):
+            check_udp({}, {"NoPorts": 5, "SndbufErrors": 1}, allow_closed_ports=True)
+
+    def test_no_ports_is_strict_for_steady_workload_and_retained_for_lifecycle(self):
+        with self.assertRaises(AssertionError):
+            check_udp({}, {"NoPorts": 5})
+        self.assertEqual(check_udp({}, {"NoPorts": 5}, allow_closed_ports=True)["NoPorts"], 5)
+
 
 if __name__ == "__main__":
     unittest.main()

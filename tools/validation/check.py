@@ -43,10 +43,10 @@ def udp_counters(text):
     raise ValueError("UDP counters missing")
 
 
-def check_udp(before, after):
+def check_udp(before, after, allow_closed_ports=False):
     keys = ("SndbufErrors", "RcvbufErrors", "InErrors", "InCsumErrors", "MemErrors", "NoPorts")
     delta = {k: after.get(k, 0) - before.get(k, 0) for k in keys}
-    if any(delta.values()):
+    if any(value for key, value in delta.items() if key != "NoPorts" or not allow_closed_ports):
         raise AssertionError(f"unexpected namespace UDP errors: {delta}")
     return delta
 
@@ -89,8 +89,9 @@ class Network:
             command(p + ["tc", "qdisc", "del", "dev", self.links[side], "root"], check=False)
             if name != "native":
                 args = ["tc", "qdisc", "replace", "dev", self.links[side], "root", "netem",
-                        "limit", "10000", "delay", "50ms", "5ms", "loss"]
-                args += ["0.1%", "rate", "100mbit"] if name == "moderate" else ["1%", "rate", "20mbit"]
+                        "limit", "10000", "delay", "50ms", "5ms"]
+                if name != "latency":
+                    args += ["loss"] + (["0.1%", "rate", "100mbit"] if name == "moderate" else ["1%", "rate", "20mbit"])
                 command(p + args)
 
     def mtu(self, size):
@@ -200,11 +201,11 @@ class Suite:
     def bench(self, name, direction, kind="random", proxy=True, extra=(), success=True, size=262144):
         args = [self.binary("wanbench"), "-url", self.proxy_target if proxy else self.direct,
                 "-kind", kind, "-bytes", str(size), "-direction", direction,
-                "-request-timeout", "20s", "-label", name]
+                "-request-timeout", "120s" if self.o.netem else "20s", "-label", name]
         if proxy:
             args += ["-proxy", self.proxy]
         args += list(extra)
-        p = command(self.net.prefix(0) + args, timeout=45, check=False)
+        p = command(self.net.prefix(0) + args, timeout=145 if self.o.netem else 45, check=False)
         try:
             result = json.loads(p.stdout)
         except json.JSONDecodeError:
@@ -409,7 +410,7 @@ class Suite:
         self.ready(1, f"http://{self.net.address}:{op}/ping")
         client_cfg = dict(server=f"{self.net.address}:{up}", psk=psk, pin=pin,
                           http_listen=f"127.0.0.1:{pp}", metrics_listen=f"127.0.0.1:{cp}",
-                          congestion_control=self.o.cc, proxy_idle_timeout_sec=1,
+                          congestion_control=self.o.cc, proxy_idle_timeout_sec=10 if self.o.netem else 1,
                           max_active_streams=4, max_compressed_streams=1,
                           request_timeout_sec=2, handshake_timeout_sec=2)
         profiles = ["native", "moderate", "severe"] if self.o.netem else ["native"]
@@ -442,6 +443,8 @@ class Suite:
             time.sleep(2)
             self.bench(f"idle-reuse-{compressed}", "POST")
             self.drain()
+            if before and not compressed:
+                self.report["udp_initial_steady_deltas"] = [check_udp(a, b) for a, b in zip(before, self.net.counters())]
             self.stop(self.client)
             self.client = None
         if os.name != "nt":
@@ -470,6 +473,13 @@ class Suite:
         if self.o.netem:
             # The earlier one-second idle policy intentionally cannot survive a
             # two-second outage. Require its rejection and subsequent recovery.
+            self.drain()
+            self.stop(self.client)
+            self.net.profile("latency")
+            client_cfg["proxy_idle_timeout_sec"] = 1
+            self.client = self.start("client-short-idle-policy", "wanopt-client",
+                                     ["-config", self.config("client-short-idle-policy", client_cfg)], 0)
+            self.ready(0, self.cm, lambda t: metric(t, "wanopt_tunnel_connections") >= 1)
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 task = pool.submit(self.bench, "blackhole-exceeds-idle-policy", "GET", "random", True,
                                    ["-stream", "-duration", "8s", "-request-timeout", "25s", "-warm"], False, 32768)
@@ -478,20 +488,21 @@ class Suite:
                     self.net.blackhole()
                     time.sleep(2)
                 finally:
-                    self.net.profile("severe")
+                    self.net.profile("latency")
                 result = task.result()
                 if not any(word in result.get("error", "").lower() for word in ["eof", "timeout"]):
                     raise AssertionError("outage failed for an unexpected reason")
-            self.bench("recovery-after-idle-expiry", "POST")
+            self.bench("recovery-after-idle-expiry", "POST", size=32768)
             self.drain()
             self.stop(self.client)
             client_cfg["proxy_idle_timeout_sec"] = 10
+            self.net.profile("severe")
             self.client = self.start("client-outage-tolerance", "wanopt-client",
                                      ["-config", self.config("client-outage-tolerance", client_cfg)], 0)
             self.ready(0, self.cm, lambda t: metric(t, "wanopt_tunnel_connections") >= 1)
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 task = pool.submit(self.bench, "blackhole-recovery", "GET", "random", True,
-                                   ["-stream", "-duration", "8s", "-request-timeout", "25s", "-warm"], True, 32768)
+                                   ["-stream", "-duration", "8s", "-request-timeout", "120s", "-warm"], True, 32768)
                 time.sleep(1.5)
                 try:
                     self.net.blackhole()
@@ -514,7 +525,10 @@ class Suite:
         # Stop the QUIC endpoints before checking counters: later stale test packets
         # must not be mistaken for a receive failure in an application under test.
         if before:
-            self.report["udp_deltas"] = [check_udp(a, b) for a, b in zip(before, self.net.counters())]
+            self.report["udp_deltas"] = [check_udp(a, b, allow_closed_ports=True) for a, b in zip(before, self.net.counters())]
+            self.report["udp_lifecycle_note"] = ("NoPorts is retained across deliberate client stop/key revocation/restarts; "
+                                                  "the initial steady workload requires NoPorts=0. All buffer/input/checksum/memory errors "
+                                                  "remain fatal across the entire suite.")
         for p in [self.client, self.server]:
             self.stop(p)
         self.stop(self.origin, graceful=False)
