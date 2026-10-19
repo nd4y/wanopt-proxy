@@ -90,6 +90,8 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Apply pinned patches, test both modules, and build BBR experiment
+        env:
+          WANOPT_EVENT_DIR: ${{ github.workspace }}/bbr-test-events
         run: bash experiments/bbr/build.sh "${RUNNER_TEMP}/wanopt-bbr-bin"
       - name: Namespace tools on the disposable runner
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends iproute2 ethtool
@@ -100,7 +102,9 @@ jobs:
         if: always()
         with:
           name: bbr-e2e
-          path: bbr-e2e.json
+          path: |
+            bbr-e2e.json
+            bbr-test-events/
           retention-days: 14
   binary-e2e:
     strategy:
