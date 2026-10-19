@@ -8,6 +8,7 @@ import argparse
 import base64
 import contextlib
 import concurrent.futures
+import datetime
 import hashlib
 import json
 import os
@@ -204,12 +205,16 @@ class Suite:
             args += ["-proxy", self.proxy]
         args += list(extra)
         p = command(self.net.prefix(0) + args, timeout=45, check=False)
-        result = json.loads(p.stdout)
+        try:
+            result = json.loads(p.stdout)
+        except json.JSONDecodeError:
+            result = {"integrity": False, "no_result": True, "error": p.stderr[-1000:]}
         ok = result.get("integrity") is True and p.returncode == 0
-        if ok != success:
-            raise AssertionError(f"{name}: unexpected benchmark outcome: {result}")
         self.report["measurements"].append({"case": name, "expected_success": success,
                                              "exit": p.returncode, "result": result})
+        if ok != success:
+            self.report["cases"].append({"name": name, "passed": False})
+            raise AssertionError(f"{name}: unexpected benchmark outcome: {result}")
         self.record(name)
         return result
 
@@ -233,6 +238,129 @@ class Suite:
                               "codecs": metric(text, "wanopt_admitted_codecs"),
                               "reconnects": metric(text, "wanopt_tunnel_reconnects_total")})
         return snapshots
+
+    def reload(self, cfg, rejected=False):
+        log = self.root / "server.log"
+        message = "credential reload rejected" if rejected else "credentials reloaded"
+        count = log.read_text().count(message)
+        self.config("server", cfg)
+        self.server.send_signal(signal.SIGHUP)
+        end = time.monotonic() + 5
+        while time.monotonic() < end:
+            if self.server.poll() is not None:
+                raise RuntimeError("server exited during credential reload")
+            if log.read_text().count(message) > count:
+                return
+            time.sleep(.05)
+        raise RuntimeError("credential reload result was not observed")
+
+    def rotation(self, cfg, client_cfg):
+        def expiry(seconds):
+            return (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=seconds)).isoformat()
+
+        self.client = self.start("rotation-original", "wanopt-client", ["-config", self.config("client", client_cfg)], 0)
+        self.ready(0, self.cm, lambda t: metric(t, "wanopt_tunnel_connections") >= 1)
+        for kind in ["bad", "runtime", "fifo"]:
+            invalid = dict(cfg)
+            if kind == "bad":
+                invalid["unknown_credential_setting"] = True
+            elif kind == "runtime":
+                invalid["max_active_streams"] += 1
+            if kind == "fifo":
+                path = self.root / "server.json"
+                path.unlink()
+                os.mkfifo(path, 0o600)
+                message = "credential reload rejected"
+                count = (self.root / "server.log").read_text().count(message)
+                self.server.send_signal(signal.SIGHUP)
+                end = time.monotonic() + 5
+                try:
+                    while (self.root / "server.log").read_text().count(message) <= count:
+                        if time.monotonic() >= end:
+                            raise RuntimeError("FIFO reload blocked")
+                        time.sleep(.05)
+                finally:
+                    path.unlink()
+                    self.config("server", cfg)
+            else:
+                try:
+                    self.reload(invalid, rejected=True)
+                finally:
+                    self.config("server", cfg)
+            self.bench("reload-reject-" + kind, "GET", size=32768)
+        rotated = self.root / "rotated"
+        rotated.mkdir()
+        output = command([self.binary("wanopt-keygen"), "-cert", "-out", str(rotated)]).stdout
+        keys = dict(line.split(": ", 1) for line in output.splitlines() if line.startswith(("psk: ", "pin: ")))
+        old_psk = client_cfg["psk"]
+        client_cfg.update(next_pin=keys["pin"], next_pin_expires=expiry(3600))
+        self.stop(self.client)
+        self.client = self.start("rotation-overlap", "wanopt-client", ["-config", self.config("client", client_cfg)], 0)
+        self.ready(0, self.cm, lambda t: metric(t, "wanopt_tunnel_connections") >= 1)
+        self.bench("rotation-before", "GET", size=32768)
+        cfg.update(psk=keys["psk"], previous_psk=old_psk, previous_psk_expires=expiry(120),
+                   cert_file=str(rotated / "cert.pem"), key_file=str(rotated / "key.pem"))
+        self.reload(cfg)
+        self.bench("rotation-old-session-grace", "POST", size=32768)
+        self.stop(self.client)
+        self.client = self.start("rotation-next-pin", "wanopt-client", ["-config", self.config("client", client_cfg)], 0)
+        self.ready(0, self.cm, lambda t: metric(t, "wanopt_tunnel_connections") >= 1)
+        self.bench("rotation-next-pin-real-handshake", "POST", size=32768)
+        with contextlib.ExitStack() as stack:
+            sockets = [stack.enter_context(socket.socket()) for _ in range(2)]
+            for sock in sockets:
+                sock.bind(("127.0.0.1", 0))
+            port, metrics_port = [sock.getsockname()[1] for sock in sockets]
+        alternate = dict(client_cfg, psk=keys["psk"], pin=keys["pin"],
+                         http_listen=f"127.0.0.1:{port}", metrics_listen=f"127.0.0.1:{metrics_port}")
+        alternate.pop("next_pin", None)
+        alternate.pop("next_pin_expires", None)
+        proxy = self.proxy
+
+        def alternate_bench(name):
+            try:
+                self.proxy = f"http://127.0.0.1:{port}"
+                self.bench(name, "POST", size=32768)
+            finally:
+                self.proxy = proxy
+
+        secondary = self.start("rotation-primary-key", "wanopt-client", ["-config", self.config("alternate", alternate)], 0)
+        self.ready(0, f"http://127.0.0.1:{metrics_port}/metrics", lambda t: metric(t, "wanopt_tunnel_connections") >= 1)
+        alternate_bench("rotation-new-key")
+        cfg.pop("previous_psk")
+        cfg.pop("previous_psk_expires")
+        self.reload(cfg)
+        self.rejected("rotation-old-key-revoked", self.proxy_target + "/ping")
+        alternate_bench("rotation-new-key-session-retained")
+        self.stop(self.client)
+        self.stop(secondary)
+        client_cfg.update(psk=keys["psk"], pin=keys["pin"])
+        client_cfg.pop("next_pin", None)
+        client_cfg.pop("next_pin_expires", None)
+        self.client = self.start("rotation-current", "wanopt-client", ["-config", self.config("client", client_cfg)], 0)
+        self.ready(0, self.cm, lambda t: metric(t, "wanopt_tunnel_connections") >= 1)
+        self.bench("rotation-primary-restored", "GET", size=32768)
+        expires = expiry(20)
+        cfg.update(previous_psk=old_psk, previous_psk_expires=expires)
+        self.reload(cfg)
+        alternate["psk"] = old_psk
+        secondary = self.start("expiry-old-key", "wanopt-client", ["-config", self.config("alternate", alternate)], 0)
+        self.ready(0, f"http://127.0.0.1:{metrics_port}/metrics", lambda t: metric(t, "wanopt_tunnel_connections") >= 1)
+        alternate_bench("expiry-grace")
+        time.sleep(max(0, datetime.datetime.fromisoformat(expires).timestamp() - time.time()) + 1)
+        try:
+            self.proxy = f"http://127.0.0.1:{port}"
+            self.rejected("expiry-revoked-without-HUP", self.proxy_target + "/ping")
+        finally:
+            self.proxy = proxy
+        self.bench("expiry-primary-unaffected", "POST", size=32768)
+        self.stop(secondary)
+        cfg.pop("previous_psk")
+        cfg.pop("previous_psk_expires")
+        self.reload(cfg)
+        self.drain()
+        self.stop(self.client)
+        self.client = None
 
     def run(self):
         for name in ["wanopt-client", "wanopt-server", "wanopt-keygen", "wanbench"]:
@@ -316,6 +444,10 @@ class Suite:
             self.drain()
             self.stop(self.client)
             self.client = None
+        if os.name != "nt":
+            self.rotation(cfg, client_cfg)
+        else:
+            self.report["platform_skipped"] = ["Unix SIGHUP/FIFO CLI tests; credential logic is covered by cross-platform Go tests"]
         # Real handshake failures in separate client processes, followed by recovery.
         for name, field in [("bad-psk", "psk"), ("bad-pin", "pin")]:
             bad = dict(client_cfg)
@@ -336,6 +468,27 @@ class Suite:
                 for task in tasks:
                     task.result()
         if self.o.netem:
+            # The earlier one-second idle policy intentionally cannot survive a
+            # two-second outage. Require its rejection and subsequent recovery.
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                task = pool.submit(self.bench, "blackhole-exceeds-idle-policy", "GET", "random", True,
+                                   ["-stream", "-duration", "8s", "-request-timeout", "25s", "-warm"], False, 32768)
+                time.sleep(1.5)
+                try:
+                    self.net.blackhole()
+                    time.sleep(2)
+                finally:
+                    self.net.profile("severe")
+                result = task.result()
+                if not any(word in result.get("error", "").lower() for word in ["eof", "timeout"]):
+                    raise AssertionError("outage failed for an unexpected reason")
+            self.bench("recovery-after-idle-expiry", "POST")
+            self.drain()
+            self.stop(self.client)
+            client_cfg["proxy_idle_timeout_sec"] = 10
+            self.client = self.start("client-outage-tolerance", "wanopt-client",
+                                     ["-config", self.config("client-outage-tolerance", client_cfg)], 0)
+            self.ready(0, self.cm, lambda t: metric(t, "wanopt_tunnel_connections") >= 1)
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 task = pool.submit(self.bench, "blackhole-recovery", "GET", "random", True,
                                    ["-stream", "-duration", "8s", "-request-timeout", "25s", "-warm"], True, 32768)
