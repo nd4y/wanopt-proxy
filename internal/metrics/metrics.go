@@ -76,7 +76,7 @@ func New(side string) *Metrics {
 	reg.MustRegister(&connectionCollector{m: m,
 		rtt:  prometheus.NewDesc("wanopt_tunnel_rtt_seconds", "Maximum smoothed RTT among active authenticated tunnels", nil, cl),
 		cwnd: prometheus.NewDesc("wanopt_congestion_window_bytes", "Sum of congestion windows of active authenticated tunnels", nil, cl),
-		lost: prometheus.NewDesc("wanopt_lost_packets", "Current packets classified as lost across active authenticated tunnels; decreases after recovery or disconnect", nil, cl),
+		lost: prometheus.NewDesc("wanopt_lost_packets", "Cumulative packet loss declarations summed across active authenticated tunnels; decreases on disconnect", nil, cl),
 	})
 	reg.MustRegister(prometheus.NewGoCollector())
 	return m

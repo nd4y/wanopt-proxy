@@ -155,10 +155,10 @@ index db942ac9..7566c066 100644
  	GetConfigForClient func(info *ClientInfo) (*Config, error)
 diff --git a/internal/ackhandler/cc_adapter.go b/internal/ackhandler/cc_adapter.go
 new file mode 100644
-index 00000000..d4a8b1d7
+index 00000000..c5adaa60
 --- /dev/null
 +++ b/internal/ackhandler/cc_adapter.go
-@@ -0,0 +1,118 @@
+@@ -0,0 +1,124 @@
 +package ackhandler
 +
 +import (
@@ -210,6 +210,12 @@ index 00000000..d4a8b1d7
 +}
 +
 +func (a *ccAdapter) OnCongestionEvent(number protocol.PacketNumber, lostBytes protocol.ByteCount, priorInFlight protocol.ByteCount) {
++	// With an external controller, accounting belongs to the adapter.
++	// ECN-only notifications have no lost bytes and must not invent a loss.
++	if lostBytes > 0 {
++		a.stats.PacketsLost.Add(1)
++		a.stats.BytesLost.Add(uint64(lostBytes))
++	}
 +	a.CC.OnCongestionEvent(congestion.PacketNumber(number), congestion.ByteCount(lostBytes), congestion.ByteCount(priorInFlight))
 +	if _, ok := a.CC.(congestion.CongestionControlEx); ok && lostBytes > 0 {
 +		a.lost = append(a.lost, congestion.LostPacketInfo{PacketNumber: congestion.PacketNumber(number), BytesLost: congestion.ByteCount(lostBytes)})
@@ -390,6 +396,38 @@ index 00000000..4f17997e
 +		if c.flight[i] != n {
 +			t.Fatalf("packet %d: BBR received flight=%d, want pre-send %d; all=%v", i, c.flight[i], n, c.flight)
 +		}
++	}
++}
+diff --git a/internal/ackhandler/cc_adapter_stats_test.go b/internal/ackhandler/cc_adapter_stats_test.go
+new file mode 100644
+index 00000000..d7f3d4d2
+--- /dev/null
++++ b/internal/ackhandler/cc_adapter_stats_test.go
+@@ -0,0 +1,26 @@
++package ackhandler
++
++import (
++	"github.com/quic-go/quic-go/internal/monotime"
++	"github.com/quic-go/quic-go/internal/protocol"
++	"github.com/quic-go/quic-go/internal/utils"
++	"testing"
++)
++
++func TestAdapterReportsDeclaredPacketAndByteLoss(t *testing.T) {
++	stats := &utils.ConnectionStats{}
++	c := &eventController{size: 1200}
++	a := &ccAdapter{CC: c, stats: stats}
++	a.OnCongestionEvent(protocol.PacketNumber(1), 1200, 2400)
++	a.OnCongestionEvent(protocol.PacketNumber(2), 800, 1200)
++	a.OnCongestionEvent(protocol.InvalidPacketNumber, 0, 400) // ECN is not a lost packet.
++	a.OnPacketAcked(protocol.PacketNumber(3), 400, 400, monotime.Now())
++	if stats.PacketsLost.Load() != 2 || stats.BytesLost.Load() != 2000 {
++		t.Fatalf("loss stats absent/wrong: packets=%d bytes=%d", stats.PacketsLost.Load(), stats.BytesLost.Load())
++	}
++	// These are cumulative declaration statistics, not outstanding lost data.
++	a.OnSpuriousLoss(1)
++	if stats.PacketsLost.Load() != 2 || stats.BytesLost.Load() != 2000 {
++		t.Fatal("spurious-loss notification rewrote declaration history")
 +	}
 +}
 diff --git a/internal/ackhandler/cc_adapter_test.go b/internal/ackhandler/cc_adapter_test.go
