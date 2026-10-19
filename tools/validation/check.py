@@ -25,6 +25,16 @@ import time
 import urllib.request
 
 
+PROBE_RECEIVER_CODE = """import socket,sys
+s=socket.socket(type=socket.SOCK_DGRAM)
+s.bind((sys.argv[1],int(sys.argv[2])))
+print('ready',flush=True)
+while True:
+ data,_=s.recvfrom(2048)
+ if data==b'warm':print('warm-delivered',flush=True)
+"""
+
+
 def command(args, timeout=30, check=True):
     p = subprocess.run(list(map(str, args)), capture_output=True, text=True, timeout=timeout)
     if check and p.returncode:
@@ -71,7 +81,7 @@ class Network:
     def address(self):
         return "10.254.98.2" if self.enabled else "127.0.0.1"
 
-    def setup(self):
+    def setup(self, tune_offloads=True):
         if not self.enabled:
             return
         if os.geteuid() != 0:
@@ -86,7 +96,8 @@ class Network:
             command(p + ["ip", "addr", "add", f"10.254.98.{side + 1}/30", "dev", self.links[side]])
             command(p + ["ip", "link", "set", self.links[side], "up"])
             command(p + ["ip", "link", "set", "lo", "up"])
-            command(p + ["ethtool", "-K", self.links[side], "gro", "off", "gso", "off", "tso", "off"])
+            if tune_offloads:
+                command(p + ["ethtool", "-K", self.links[side], "gro", "off", "gso", "off", "tso", "off"])
 
     def profile(self, name):
         self.observe("before-profile-" + name)
@@ -426,9 +437,10 @@ finally:
         net = Network(True)
         receiver = None
         try:
-            net.setup()
-            code = "import signal,socket; s=socket.socket(type=socket.SOCK_DGRAM); s.bind(('10.254.98.2',39009)); print('ready',flush=True); signal.pause()"
-            receiver = subprocess.Popen(net.prefix(1) + [sys.executable, "-c", code],
+            # Small ordinary UDP datagrams do not use segmentation offload.
+            net.setup(tune_offloads=False)
+            receiver = subprocess.Popen(net.prefix(1) + [sys.executable, "-u", "-c", PROBE_RECEIVER_CODE,
+                                                         net.address, "39009"],
                                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             readable, _, _ = select.select([receiver.stdout], [], [], 5)
             if not readable or receiver.stdout.readline().strip() != "ready":
@@ -438,14 +450,14 @@ finally:
             # not propagate through the sendmsg path whose counter we calibrate.
             warm = "import socket; s=socket.socket(type=socket.SOCK_DGRAM); s.sendto(b'warm',('10.254.98.2',39009)); s.close()"
             command(net.prefix(0) + [sys.executable, "-c", warm], timeout=5)
-            end = time.monotonic() + 3
-            while net.counters()[1].get("InDatagrams", 0) < 1:
-                if time.monotonic() >= end:
-                    raise RuntimeError("negative probe neighbour warmup did not deliver")
-                time.sleep(.05)
+            readable, _, _ = select.select([receiver.stdout], [], [], 3)
+            if not readable or receiver.stdout.readline().strip() != "warm-delivered":
+                raise RuntimeError("negative probe neighbour warmup did not deliver")
             command(net.prefix(0) + ["tc", "qdisc", "replace", "dev", net.links[0], "root",
                                     "netem", "limit", "1", "delay", "50ms"])
             before = net.counters()
+            if before[1].get("InDatagrams", 0) < 1:
+                raise RuntimeError("negative probe warmup was not consumed")
             sender = """import collections,json,socket
 s=socket.socket(type=socket.SOCK_DGRAM)
 errors=collections.Counter()

@@ -723,6 +723,11 @@
     },
     {
       "file": "tools/validation/test_check.py",
+      "name": "test_probe_receiver_consumes_warm_datagram_and_exits",
+      "workflow": "CI/test Python observation/asset checks (Linux and Windows)"
+    },
+    {
+      "file": "tools/validation/test_check.py",
       "name": "test_udp_error_is_not_hidden_by_successful_packets",
       "workflow": "CI/test Python observation/asset checks (Linux and Windows)"
     },
