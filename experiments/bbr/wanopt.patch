@@ -984,10 +984,10 @@ index 0000000..cbeaa74
 +}
 diff --git a/internal/congestion/bbr/bbr_sender.go b/internal/congestion/bbr/bbr_sender.go
 new file mode 100644
-index 0000000..82fecc5
+index 0000000..2a99558
 --- /dev/null
 +++ b/internal/congestion/bbr/bbr_sender.go
-@@ -0,0 +1,1143 @@
+@@ -0,0 +1,1145 @@
 +package bbr
 +
 +import (
@@ -1364,6 +1364,7 @@ index 0000000..82fecc5
 +		debug:           debug,
 +	}
 +	b.pacer = common.NewPacer(b.bandwidthForPacer)
++	b.pacer.SetMaxDatagramSize(initialMaxDatagramSize)
 +	b.applyProfile(profile)
 +	if b.debug {
 +		b.debugPrint("Profile: %s", b.profile)
@@ -1482,6 +1483,7 @@ index 0000000..82fecc5
 +	b.rttStats = rtt
 +	// The constructor's bound method captures fresh, not the live receiver.
 +	b.pacer = common.NewPacer(b.bandwidthForPacer)
++	b.pacer.SetMaxDatagramSize(b.maxDatagramSize)
 +}
 +
 +// CanSend implements the SendAlgorithm interface.
@@ -2404,6 +2406,88 @@ index 0000000..e98db14
 +	b.OnPacketSent(drained.Add(100*time.Millisecond), 0, 4, 1200, true)
 +	if b.InSlowStart() {
 +		t.Fatal("mistook slow flight drain for application idle")
++	}
++}
+diff --git a/internal/congestion/bbr/pacer_mtu_test.go b/internal/congestion/bbr/pacer_mtu_test.go
+new file mode 100644
+index 0000000..7a0c9f2
+--- /dev/null
++++ b/internal/congestion/bbr/pacer_mtu_test.go
+@@ -0,0 +1,76 @@
++package bbr
++
++import (
++	"fmt"
++	"testing"
++	"time"
++
++	"github.com/quic-go/quic-go/congestion"
++	"github.com/quic-go/quic-go/monotime"
++)
++
++type pacerMTUClock struct{ now monotime.Time }
++
++func (c *pacerMTUClock) Now() monotime.Time { return c.now }
++
++type pacerMTURTT struct {
++	fixedRTT
++	rtt time.Duration
++}
++
++func (r pacerMTURTT) MinRTT() time.Duration  { return r.rtt }
++func (r pacerMTURTT) PTO(bool) time.Duration { return r.rtt + 200*time.Millisecond }
++
++// The sender's pacing gate and the pacer's deadline must use the same packet
++// size, including when PMTU discovery grows it or initial fallback reduces it.
++func TestPacerUsesCurrentMTUAtConstructionAndAfterIdle(t *testing.T) {
++	for _, mtu := range []congestion.ByteCount{1200, 1472} {
++		for _, rtt := range []time.Duration{100 * time.Millisecond, 3 * time.Second} {
++			for _, restart := range []bool{false, true} {
++				for _, firstSize := range []congestion.ByteCount{1104, mtu} {
++					t.Run(fmt.Sprintf("mtu_%d/rtt_%s/restart_%t/first_%d", mtu, rtt, restart, firstSize), func(t *testing.T) {
++						clock := &pacerMTUClock{now: monotime.Now()}
++						b := NewBbrSender(clock, mtu, ProfileStandard)
++						if restart {
++							var idle monotime.Time
++							b, idle = primedIdleSender(rtt + 200*time.Millisecond)
++							b.SetMaxDatagramSize(mtu)
++							b.clock = clock
++							clock.now = idle.Add(15 * time.Second)
++						}
++						b.SetRTTStatsProvider(pacerMTURTT{rtt: rtt})
++						// A partial first packet makes the stale 1280-byte pacer leave a budget
++						// between 1280 and 1472, exposing the immediate-deadline disagreement.
++						partial := firstSize
++						b.OnPacketSent(clock.Now(), 0, 2, partial, true)
++						if !b.InSlowStart() {
++							t.Fatal("idle model did not restart")
++						}
++						if got, want := b.pacer.Budget(clock.Now()), 10*mtu-partial; got != want {
++							t.Errorf("burst budget %d, want %d for current MTU %d", got, want, mtu)
++						}
++						flight := partial
++						for pn := congestion.PacketNumber(3); b.HasPacingBudget(clock.Now()) && pn < 30; pn++ {
++							b.OnPacketSent(clock.Now(), flight, pn, mtu, true)
++							flight += mtu
++						}
++						if b.HasPacingBudget(clock.Now()) {
++							t.Fatal("test did not exhaust burst")
++						}
++						wake := b.TimeUntilSend(mtu)
++						if wake.IsZero() {
++							t.Fatal("pacer requests immediate send without a current-MTU budget")
++						}
++						if !wake.After(clock.Now()) {
++							t.Fatal("pacing deadline did not advance")
++						}
++						clock.now = wake
++						if !b.HasPacingBudget(clock.Now()) {
++							t.Fatalf("pacing deadline has %d bytes; sender requires %d", b.pacer.Budget(clock.Now()), mtu)
++						}
++					})
++				}
++			}
++		}
 +	}
 +}
 diff --git a/internal/congestion/bbr/packet_number_indexed_queue.go b/internal/congestion/bbr/packet_number_indexed_queue.go
