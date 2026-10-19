@@ -433,12 +433,21 @@ finally:
             readable, _, _ = select.select([receiver.stdout], [], [], 5)
             if not readable or receiver.stdout.readline().strip() != "ready":
                 raise RuntimeError("negative probe receiver was not ready")
+            # Resolve the neighbour before installing the tiny queue. Otherwise
+            # ARP can defer UDP transmission: later asynchronous queue drops do
+            # not propagate through the sendmsg path whose counter we calibrate.
+            warm = "import socket; s=socket.socket(type=socket.SOCK_DGRAM); s.sendto(b'warm',('10.254.98.2',39009)); s.close()"
+            command(net.prefix(0) + [sys.executable, "-c", warm], timeout=5)
+            end = time.monotonic() + 3
+            while net.counters()[1].get("InDatagrams", 0) < 1:
+                if time.monotonic() >= end:
+                    raise RuntimeError("negative probe neighbour warmup did not deliver")
+                time.sleep(.05)
             command(net.prefix(0) + ["tc", "qdisc", "replace", "dev", net.links[0], "root",
                                     "netem", "limit", "1", "delay", "50ms"])
             before = net.counters()
             sender = """import collections,json,socket
 s=socket.socket(type=socket.SOCK_DGRAM)
-s.setsockopt(socket.IPPROTO_IP,getattr(socket,'IP_RECVERR',11),1)
 errors=collections.Counter()
 for _ in range(1000):
  try:s.sendto(b'x'*1200,('10.254.98.2',39009))
@@ -454,6 +463,7 @@ s.close();print(json.dumps(dict(errors)))
             send_errors = after[0].get("SndbufErrors", 0) - before[0].get("SndbufErrors", 0)
             self.report["queue_overflow_probe"] = {"expected_fixture_failure": True, "before": before,
                 "after": after, "qdisc": queues, "send_errno_counts": errors,
+                "neighbour_warmed_and_delivery_checked": True, "ip_recverr": False,
                 "qdisc_drops": drops, "sndbuf_errors": send_errors}
             if drops <= 0 or drops != send_errors:
                 raise AssertionError(f"expected matching deliberate queue drops/SndbufErrors, got {drops}/{send_errors}")

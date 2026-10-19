@@ -2,6 +2,10 @@
 
 This is the separate real-channel register for [the complete test plan](test-plan.md). Hosted runner netem checks exercise deterministic regressions; they do not establish provider-path throughput, host resource headroom or continuity of other services. Real-node measurements are observations, not universal speedup gates.
 
+Strictly real-channel-only evidence here is the actual node/route identity (WAN-01), installed-release chain on those nodes (WAN-02), provider-path throughput and interactive distributions (WAN-03/05), real pr4 resource headroom alongside existing workloads (WAN-06), and continuity of the original services/settings (WAN-08). Physical migration, provider variation outside the bounded run and multi-day stability (WAN-09) also need real conditions. The hash-checking, rate-step, authentication/rotation, cancellation, MTU and outage logic in WAN-02/04/07 is portable and is also automated in Actions; this register records its additional real-path execution, not an exemption from CI.
+
+CI's no-loss100ms control has a defined100Mbit/s capacity so a finite veth queue does not introduce unrequested overflow loss. The real latency-only profile keeps the physical pr4/pr5 path without an added rate cap. The deliberate one-packet overflow/Sndbuf calibration probe runs only in disposable runner namespaces, never on the user's nodes.
+
 ## pr4/pr5 release acceptance
 
 | ID | Case | Required evidence and acceptance | Status |
