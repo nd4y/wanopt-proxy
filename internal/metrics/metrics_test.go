@@ -55,14 +55,20 @@ func TestConnectionMetricsAggregateAndCleanUp(t *testing.T) {
 		t.Fatal(got)
 	}
 	a.mu.Lock()
-	a.stats.PacketsLost = 1
+	a.stats.PacketsLost = 5
 	a.mu.Unlock()
-	if got := metricValue(t, m, "wanopt_lost_packets"); got != 3 {
-		t.Fatalf("loss recovery must reduce gauge: %v", got)
+	if got := metricValue(t, m, "wanopt_lost_packets"); got != 7 {
+		t.Fatalf("new loss declarations must advance gauge: %v", got)
 	}
 	removeA()
 	removeA()
+	if got := metricValue(t, m, "wanopt_lost_packets"); got != 2 {
+		t.Fatalf("disconnected tunnel retained loss history: %v", got)
+	}
 	removeB()
+	if got := metricValue(t, m, "wanopt_lost_packets"); got != 0 {
+		t.Fatalf("stale loss history: %v", got)
+	}
 	if got := scalar(t, m.Connections); got != 0 {
 		t.Fatal(got)
 	}

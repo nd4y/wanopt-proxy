@@ -146,8 +146,10 @@ endpoint private. Labels have bounded cardinality; destinations are not labels.
 - `wanopt_tunnel_reconnects_total` counts reconnect attempts, including after failed authentication.
 - `wanopt_tunnel_rtt_seconds` is the maximum current smoothed RTT;
   `wanopt_congestion_window_bytes` is the sum over active tunnels.
-- `wanopt_lost_packets` is a current gauge, not a cumulative counter. QUIC loss
-  reclassification and disconnects can decrease it.
+- `wanopt_lost_packets` is a gauge summing cumulative packet-loss declarations
+  across active authenticated tunnels. Retransmission or a later spurious-loss
+  report does not erase that history; disconnecting a tunnel decreases the sum.
+  Older experimental BBR builds did not populate these statistics.
 - `wanopt_udp_flows`, `wanopt_udp_datagrams_total{dir}` and
   `wanopt_udp_dropped_total{reason}` report UDP load and rejected/lost packets.
 
