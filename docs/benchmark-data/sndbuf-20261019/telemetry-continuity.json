@@ -1,0 +1,26 @@
+{
+  "client": {
+    "original_production_containers_and_daemons_unchanged": true,
+    "host_qdisc_unchanged": true,
+    "test_namespace_files_veth_rules_units_absent": true,
+    "test_pids_stable": true,
+    "memory_peak_mib": 88.49609375,
+    "parent_slices": {
+      "wanopt-hardening-pr45.slice": "inactive",
+      "wanopt-hardening.slice": "inactive"
+    },
+    "final_disk": "Filesystem      1B-blocks       Used Available Use% Mounted on\n/dev/root      7203201024 6698311680 488112128  94% /\n"
+  },
+  "server": {
+    "original_production_containers_and_daemons_unchanged": true,
+    "host_qdisc_unchanged": true,
+    "test_namespace_files_veth_rules_units_absent": true,
+    "test_pids_stable": true,
+    "memory_peak_mib": 93.16015625,
+    "parent_slices": {
+      "wanopt-hardening-pr45.slice": "inactive",
+      "wanopt-hardening.slice": "inactive"
+    },
+    "final_disk": "Filesystem       1B-blocks       Used   Available Use% Mounted on\n/dev/sda1      39964635136 5758554112 32516898816  16% /\n"
+  }
+}

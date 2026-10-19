@@ -1,0 +1,24 @@
+{
+  "client": {
+    "production_containers_unchanged": true,
+    "host_qdisc_unchanged": true,
+    "monitoring_and_netbird_unchanged": true,
+    "test_files_namespace_veth_rules_units_absent": true,
+    "parent_slices": {
+      "wanopt-hardening-pr45.slice": "inactive",
+      "wanopt-hardening.slice": "inactive"
+    },
+    "final_disk": "Filesystem      1B-blocks       Used Available Use% Mounted on\n/dev/root      7203201024 6698340352 488083456  94% /\n"
+  },
+  "server": {
+    "production_containers_unchanged": true,
+    "host_qdisc_unchanged": true,
+    "monitoring_and_netbird_unchanged": true,
+    "test_files_namespace_veth_rules_units_absent": true,
+    "parent_slices": {
+      "wanopt-hardening-pr45.slice": "inactive",
+      "wanopt-hardening.slice": "inactive"
+    },
+    "final_disk": "Filesystem       1B-blocks       Used   Available Use% Mounted on\n/dev/sda1      39964635136 5758611456 32516841472  16% /\n"
+  }
+}

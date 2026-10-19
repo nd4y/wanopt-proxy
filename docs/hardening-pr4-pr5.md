@@ -49,6 +49,8 @@ Mixed cycles exercise concurrent bulk/one-byte requests, competing direct TCP/QU
 
 Transport counters were not completely error-free: pr4 recorded 366 UDP `SndbufErrors` in one observation interval ending with a severe-profile compressed BBR text upload, then the counter remained unchanged. Neither node recorded receive-buffer or checksum errors, and pr5 recorded no send-buffer errors. All measured transfers completed integrity checks despite these events. Their exact kernel cause was not traced; do not reinterpret successful application delivery as zero transport errors or an unconditional stability guarantee.
 
+The [send-discard follow-up](sndbuf-pr4-pr5.md) preserves this historical result, reproduces queue overflow with a kernel trace, fixes pre-send flight accounting and idle-capacity validation, and records fresh bidirectional tests and cleanup. It also corrects missing loss-statistics accounting in the external adapter: older BBR `wanopt_lost_packets=0` readings are uninstrumented values, not evidence of no network loss.
+
 | Node | Test-slice peak MiB | Idle observations | Final test-slice MiB |
 | --- | ---: | ---: | ---: |
 | pr4 | 76.05 | 120 | 35.30 |

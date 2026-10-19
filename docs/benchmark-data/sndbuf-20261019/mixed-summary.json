@@ -1,0 +1,62 @@
+[
+  {
+    "profile": "latency",
+    "direction": "POST",
+    "interactive_idle_p95_ms_batch_median": 104.678018,
+    "interactive_loaded_p95_ms_batch_median": 110.42992,
+    "interactive_batches": 5,
+    "competing_tcp_mbps_batch_median": 54.244568924569776,
+    "competing_bbr_mbps_batch_median": 55.62384488195987,
+    "fair_pairs": 4
+  },
+  {
+    "profile": "latency",
+    "direction": "GET",
+    "interactive_idle_p95_ms_batch_median": 104.22352599999999,
+    "interactive_loaded_p95_ms_batch_median": 110.292072,
+    "interactive_batches": 5,
+    "competing_tcp_mbps_batch_median": 53.1636490907805,
+    "competing_bbr_mbps_batch_median": 55.40202153924747,
+    "fair_pairs": 4
+  },
+  {
+    "profile": "moderate",
+    "direction": "POST",
+    "interactive_idle_p95_ms_batch_median": 110.81729949999999,
+    "interactive_loaded_p95_ms_batch_median": 212.12442,
+    "interactive_batches": 4,
+    "competing_tcp_mbps_batch_median": 33.74456898628459,
+    "competing_bbr_mbps_batch_median": 28.434804350742453,
+    "fair_pairs": 4
+  },
+  {
+    "profile": "moderate",
+    "direction": "GET",
+    "interactive_idle_p95_ms_batch_median": 108.97298649999999,
+    "interactive_loaded_p95_ms_batch_median": 161.9073765,
+    "interactive_batches": 4,
+    "competing_tcp_mbps_batch_median": 39.92373700668489,
+    "competing_bbr_mbps_batch_median": 26.044309624173366,
+    "fair_pairs": 4
+  },
+  {
+    "profile": "severe",
+    "direction": "POST",
+    "interactive_idle_p95_ms_batch_median": 109.918166,
+    "interactive_loaded_p95_ms_batch_median": 191.04950100000002,
+    "interactive_batches": 4,
+    "competing_tcp_mbps_batch_median": 9.318064303493568,
+    "competing_bbr_mbps_batch_median": 8.1069036769788,
+    "fair_pairs": 4
+  },
+  {
+    "profile": "severe",
+    "direction": "GET",
+    "interactive_idle_p95_ms_batch_median": 110.478488,
+    "interactive_loaded_p95_ms_batch_median": 203.562838,
+    "interactive_batches": 4,
+    "competing_tcp_mbps_batch_median": 9.866855647498717,
+    "competing_bbr_mbps_batch_median": 7.816156649787317,
+    "fair_pairs": 4
+  }
+]

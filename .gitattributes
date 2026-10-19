@@ -1,1 +1,3 @@
 * text=auto eol=lf
+# Unified-diff context prefixes can precede Go indentation tabs.
+experiments/bbr/*.patch -whitespace

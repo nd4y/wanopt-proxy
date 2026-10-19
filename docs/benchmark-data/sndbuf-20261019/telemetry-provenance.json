@@ -1,0 +1,14 @@
+{
+  "code_commit": "f86d29b70c0b868615622c8878011a39ef66cd6f",
+  "binary_sha256": {
+    "wanopt-client": "0565718d43d678430e189d33c2cbf1c0ae41ee31c0c803d293202dc5411ad2cb",
+    "wanopt-server": "60ccc7a8bd4b0c50cec808d7b9c4542401b577f1a509720f4bfe0bc6c67900cf",
+    "wanbench": "15554faa8a55faddbba7f4c3a2033d3a9797cc4250f6aa50aed8f07ab384d142"
+  },
+  "patch_sha256": {
+    "wanopt.patch": "eaf55424145e285c613fe3ac59e69a6299ab9ba497251ae2cbd2d9e895554866",
+    "quic-go.patch": "6279cf8880a994e9b1c4a5614d0ab2babb759b33e559cd307b81e5f169bbc555"
+  },
+  "datapath_source_commit": "761e1c6d3d043247942ff3cfd19b21a5bc6e8fea",
+  "change_scope": "Loss-statistics accounting and metric help only; congestion behavior unchanged"
+}

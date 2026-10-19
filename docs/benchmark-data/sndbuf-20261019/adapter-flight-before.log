@@ -1,0 +1,5 @@
+--- FAIL: TestAdapterUsesPreSendFlightThroughRealHandler (0.00s)
+    cc_adapter_send_test.go:44: packet 0: BBR received flight=1200, want pre-send 0; all=[1200 1200 2200 1300]
+FAIL
+FAIL	github.com/quic-go/quic-go/internal/ackhandler	0.006s
+FAIL

@@ -1,0 +1,23 @@
+{
+  "remote_extra_checks": {
+    "client": {
+      "owned_processes": [],
+      "owned_unit_files": [],
+      "trace_instance_absent": true,
+      "tracefs_readable": true,
+      "trace_probe_group_absent": true
+    },
+    "server": {
+      "owned_processes": [],
+      "owned_unit_files": [],
+      "trace_instance_absent": true,
+      "tracefs_readable": true,
+      "trace_probe_group_absent": true
+    }
+  },
+  "windows_controllers": {
+    "checked_utc": "2026-10-19T01:33:21.9496246Z",
+    "controller_processes_remaining": [],
+    "controller_tasks_remaining": []
+  }
+}

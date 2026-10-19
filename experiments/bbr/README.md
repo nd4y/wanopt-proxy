@@ -1,6 +1,6 @@
 # Experimental QUIC BBR
 
-This opt-in experiment preserves the normal build and its upstream quic-go v0.64.0 dependency. It is not a production default. See [the pr4/pr5 measurements](../../docs/bbr-pr4-pr5.md) for both improvements and regressions.
+This opt-in experiment preserves the normal build and its upstream quic-go v0.64.0 dependency. It is not a production default. See [the pr4/pr5 measurements](../../docs/bbr-pr4-pr5.md) for both improvements and regressions. The [UDP send-discard follow-up](../../docs/sndbuf-pr4-pr5.md) documents the pre-send adapter correction, idle-capacity regression, loss-statistics fix and isolated pr4/pr5 rerun.
 
 ## Reproduce
 

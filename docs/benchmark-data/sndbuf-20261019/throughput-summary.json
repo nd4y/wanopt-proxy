@@ -1,0 +1,158 @@
+[
+  {
+    "profile": "latency",
+    "kind": "text",
+    "direction": "POST",
+    "direct": 745.5809380266533,
+    "reno": 145.48066395636084,
+    "compressed": 360.37895753145995,
+    "repeats": {
+      "direct": 2,
+      "reno": 2,
+      "compressed": 2
+    }
+  },
+  {
+    "profile": "latency",
+    "kind": "text",
+    "direction": "GET",
+    "direct": 714.316887556661,
+    "reno": 135.52501028287807,
+    "compressed": 389.75620337158637,
+    "repeats": {
+      "direct": 2,
+      "reno": 2,
+      "compressed": 2
+    }
+  },
+  {
+    "profile": "latency",
+    "kind": "random",
+    "direction": "POST",
+    "direct": 743.3268397991566,
+    "reno": 22.98101988158076,
+    "compressed": 266.47266577268834,
+    "repeats": {
+      "direct": 2,
+      "reno": 2,
+      "compressed": 2
+    }
+  },
+  {
+    "profile": "latency",
+    "kind": "random",
+    "direction": "GET",
+    "direct": 689.4987264667107,
+    "reno": 21.877149327496817,
+    "compressed": 283.88116885387126,
+    "repeats": {
+      "direct": 2,
+      "reno": 2,
+      "compressed": 2
+    }
+  },
+  {
+    "profile": "moderate",
+    "kind": "text",
+    "direction": "POST",
+    "direct": 92.31373365523567,
+    "reno": 35.05981871336199,
+    "compressed": 324.0569422263768,
+    "repeats": {
+      "direct": 2,
+      "reno": 2,
+      "compressed": 2
+    }
+  },
+  {
+    "profile": "moderate",
+    "kind": "text",
+    "direction": "GET",
+    "direct": 91.65665891701931,
+    "reno": 31.881124158623138,
+    "compressed": 332.85561258857297,
+    "repeats": {
+      "direct": 2,
+      "reno": 2,
+      "compressed": 2
+    }
+  },
+  {
+    "profile": "moderate",
+    "kind": "random",
+    "direction": "POST",
+    "direct": 92.14665858328553,
+    "reno": 5.993666320623829,
+    "compressed": 91.28222621655232,
+    "repeats": {
+      "direct": 2,
+      "reno": 2,
+      "compressed": 2
+    }
+  },
+  {
+    "profile": "moderate",
+    "kind": "random",
+    "direction": "GET",
+    "direct": 91.83413082117823,
+    "reno": 5.788284672538456,
+    "compressed": 91.13364020647944,
+    "repeats": {
+      "direct": 2,
+      "reno": 2,
+      "compressed": 2
+    }
+  },
+  {
+    "profile": "severe",
+    "kind": "text",
+    "direction": "POST",
+    "direct": 18.557737511437953,
+    "reno": 11.901348432945468,
+    "compressed": 107.70571568995445,
+    "repeats": {
+      "direct": 2,
+      "reno": 2,
+      "compressed": 2
+    }
+  },
+  {
+    "profile": "severe",
+    "kind": "text",
+    "direction": "GET",
+    "direct": 18.357888869429004,
+    "reno": 12.607545464751885,
+    "compressed": 111.15678608532386,
+    "repeats": {
+      "direct": 2,
+      "reno": 2,
+      "compressed": 2
+    }
+  },
+  {
+    "profile": "severe",
+    "kind": "random",
+    "direction": "POST",
+    "direct": 18.512855582827502,
+    "reno": 1.7934018078199918,
+    "compressed": 18.265959545362993,
+    "repeats": {
+      "direct": 2,
+      "reno": 2,
+      "compressed": 2
+    }
+  },
+  {
+    "profile": "severe",
+    "kind": "random",
+    "direction": "GET",
+    "direct": 18.42681900891562,
+    "reno": 1.7059307989249275,
+    "compressed": 18.304868753548483,
+    "repeats": {
+      "direct": 2,
+      "reno": 2,
+      "compressed": 2
+    }
+  }
+]

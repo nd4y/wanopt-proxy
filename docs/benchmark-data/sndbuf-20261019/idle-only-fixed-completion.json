@@ -1,0 +1,16 @@
+{
+  "exit_code": 1,
+  "failure": {
+    "phase": "idle-bandwidth-regression",
+    "type": "AssertionError",
+    "error": "('client', 'SndbufErrors', 573)"
+  },
+  "guard_failures": [],
+  "cleanup_exit_codes": [
+    0,
+    0
+  ],
+  "finished": 1792365955.7718768,
+  "elapsed": 399.6258053779602,
+  "measurements": 2
+}
