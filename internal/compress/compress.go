@@ -1,157 +1,221 @@
-// Package compress provides adaptive, per-direction stream compression for the
-// tunnel relay. Each direction is self-describing: the sender probes the first
-// chunk of data, and only enables DEFLATE when that sample is actually
-// compressible (so already-compressed payloads — TLS, video, archives — are
-// passed through untouched and don't waste CPU). A one-byte marker tells the
-// receiver which path was taken.
+// Package compress implements optional, bounded block compression for protocol v2.
+// Every block chooses raw or DEFLATE independently. Compression is opt-in: even
+// incompressible input costs CPU, and framing adds five bytes per block.
 package compress
 
 import (
+	"bytes"
 	"compress/flate"
+	"encoding/binary"
+	"errors"
 	"io"
+	"time"
 )
 
 const (
+	blockSize        = 32 * 1024
 	markerRaw   byte = 0
 	markerFlate byte = 1
-
-	probeSize     = 32 * 1024 // bytes sampled to estimate compressibility
-	compressIfPct = 90        // use DEFLATE only if sample shrinks below this %
-	flateLevel    = flate.DefaultCompression
 )
 
-// Copy streams src->dst, transparently compressing when the data looks
-// compressible. It writes a leading marker byte describing the choice. Returns
-// the number of *uncompressed* payload bytes copied.
-func Copy(dst io.Writer, src io.Reader) (int64, error) {
-	// Sample the first chunk with a single bounded read.
-	sample := make([]byte, probeSize)
-	n, rerr := io.ReadAtLeast(src, sample, 1)
-	if n == 0 {
-		// Nothing to send; still emit a raw marker so the reader stays in sync.
-		_, werr := dst.Write([]byte{markerRaw})
-		if rerr == io.EOF || rerr == io.ErrUnexpectedEOF {
-			return 0, werr
-		}
-		if werr != nil {
-			return 0, werr
-		}
-		return 0, rerr
-	}
-	sample = sample[:n]
+// Keep at most two idle encoders. Active encoders are bounded by stream limits.
+var encoders = make(chan *flate.Writer, 2)
 
-	if !compressible(sample) {
-		if _, err := dst.Write([]byte{markerRaw}); err != nil {
-			return 0, err
-		}
-		w, err := writeAll(dst, sample)
-		if err != nil {
-			return w, err
-		}
-		if rerr != nil {
-			return w, ignoreEOF(rerr)
-		}
-		c, err := io.Copy(dst, src)
-		return w + c, err
-	}
-
-	if _, err := dst.Write([]byte{markerFlate}); err != nil {
-		return 0, err
-	}
-	fw, err := flate.NewWriter(dst, flateLevel)
-	if err != nil {
-		return 0, err
-	}
-	written, err := flushingCopy(fw, sample, src, rerr)
-	cerr := fw.Close()
-	if err != nil {
-		return written, err
-	}
-	return written, cerr
-}
-
-// Decopy reverses Copy: it reads the marker and streams the (decompressed)
-// payload to dst.
-func Decopy(dst io.Writer, src io.Reader) (int64, error) {
-	var marker [1]byte
-	if _, err := io.ReadFull(src, marker[:]); err != nil {
-		return 0, ignoreEOF(err)
-	}
-	switch marker[0] {
-	case markerRaw:
-		return io.Copy(dst, src)
-	case markerFlate:
-		fr := flate.NewReader(src)
-		defer fr.Close()
-		return io.Copy(dst, fr)
+func encoder(dst io.Writer) *flate.Writer {
+	select {
+	case w := <-encoders:
+		w.Reset(dst)
+		return w
 	default:
-		return 0, io.ErrUnexpectedEOF
+		w, _ := flate.NewWriter(dst, flate.BestSpeed)
+		return w
+	}
+}
+func release(w *flate.Writer) {
+	w.Reset(io.Discard)
+	select {
+	case encoders <- w:
+	default:
 	}
 }
 
-// flushingCopy writes the already-read prefix then pumps src into fw, flushing
-// after every read so interactive traffic is not stuck in the DEFLATE buffer.
-func flushingCopy(fw *flate.Writer, prefix []byte, src io.Reader, prefixErr error) (int64, error) {
+// Copy writes frames [mode:1][raw length:2][encoded length:2][data]. A single
+// Read supplies a block so interactive protocols never wait for a full buffer.
+func Copy(dst io.Writer, src io.Reader) (int64, error) {
+	return CopyCounted(dst, src, nil)
+}
+
+// CopyCounted reports uncompressed bytes after a complete block reaches dst.
+func CopyCounted(dst io.Writer, src io.Reader, onPayload func(int)) (int64, error) {
+	return CopyObserved(dst, src, onPayload, nil)
+}
+
+// Stats is aggregated once per MiB or on return; it never labels payloads.
+type Stats struct {
+	InputBytes, OutputBytes, Attempted, Skipped, Compressed int64
+	EncodeTime                                              time.Duration
+}
+
+// CopyObserved skips tiny inputs and backs off after three unsuccessful probes.
+// It never buffers extra source reads, preserving interactive latency.
+func CopyObserved(dst io.Writer, src io.Reader, onPayload func(int), observe func(Stats)) (int64, error) {
+	frame := make([]byte, blockSize+5)
+	buf := frame[5:]
+	var compressed bytes.Buffer
+	var w *flate.Writer
+	defer func() {
+		if w != nil {
+			release(w)
+		}
+	}()
+	var stats Stats
+	flush := func() {
+		if observe != nil && stats.InputBytes > 0 {
+			observe(stats)
+			stats = Stats{}
+		}
+	}
+	defer flush()
+	misses, skipBytes := 0, 0
 	var total int64
-	if len(prefix) > 0 {
-		if _, err := fw.Write(prefix); err != nil {
-			return total, err
-		}
-		total += int64(len(prefix))
-		if err := fw.Flush(); err != nil {
-			return total, err
-		}
-	}
-	if prefixErr != nil {
-		return total, ignoreEOF(prefixErr)
-	}
-	buf := make([]byte, 64*1024)
+	emptyReads := 0
 	for {
-		n, err := src.Read(buf)
+		n, readErr := src.Read(buf)
 		if n > 0 {
-			if _, werr := fw.Write(buf[:n]); werr != nil {
-				return total, werr
+			emptyReads = 0
+			mode, data := markerRaw, buf[:n]
+			if n < 256 || skipBytes > 0 {
+				stats.Skipped++
+				skipBytes = max(0, skipBytes-n)
+			} else {
+				compressed.Reset()
+				if w == nil {
+					w = encoder(&compressed)
+				} else {
+					w.Reset(&compressed)
+				}
+				var start time.Time
+				if observe != nil {
+					start = time.Now()
+				}
+				if _, err := w.Write(buf[:n]); err != nil {
+					return total, err
+				}
+				if err := w.Close(); err != nil {
+					return total, err
+				}
+				if observe != nil {
+					stats.EncodeTime += time.Since(start)
+				}
+				stats.Attempted++
+				if compressed.Len()*100 < n*90 {
+					mode, data = markerFlate, compressed.Bytes()
+					misses = 0
+					stats.Compressed++
+				} else {
+					misses++
+					if misses >= 3 {
+						skipBytes = 256 * 1024
+					}
+				}
+			}
+			header := frame[:5]
+			header[0] = mode
+			binary.BigEndian.PutUint16(header[1:3], uint16(n))
+			binary.BigEndian.PutUint16(header[3:5], uint16(len(data)))
+			// One write avoids emitting a tiny header separately on the tunnel.
+			// Raw data is already in frame; only compressed payload needs copying.
+			if mode == markerFlate {
+				copy(buf, data)
+			}
+			if err := writeFull(dst, frame[:5+len(data)]); err != nil {
+				return total, err
 			}
 			total += int64(n)
-			if ferr := fw.Flush(); ferr != nil {
-				return total, ferr
+			stats.InputBytes += int64(n)
+			stats.OutputBytes += int64(5 + len(data))
+			if stats.InputBytes >= 1<<20 {
+				flush()
+			}
+			if onPayload != nil {
+				onPayload(n)
+			}
+		} else if readErr == nil {
+			emptyReads++
+			if emptyReads >= 100 {
+				return total, io.ErrNoProgress
 			}
 		}
-		if err != nil {
-			return total, ignoreEOF(err)
+		if readErr != nil {
+			if readErr == io.EOF {
+				readErr = nil
+			}
+			return total, readErr
 		}
 	}
 }
 
-// compressible reports whether a DEFLATE pass shrinks the sample enough to be
-// worth it.
-func compressible(sample []byte) bool {
-	var counter countWriter
-	fw, err := flate.NewWriter(&counter, flateLevel)
-	if err != nil {
-		return false
+// Decopy validates both frame sizes and decompressed length before forwarding a
+// block. A truncated compressed stream is an error, never a successful EOF.
+func Decopy(dst io.Writer, src io.Reader) (int64, error) {
+	encoded := make([]byte, blockSize)
+	decoded := make([]byte, blockSize+1)
+	var total int64
+	var input bytes.Reader
+	var reader io.ReadCloser
+	defer func() {
+		if reader != nil {
+			reader.Close()
+		}
+	}()
+	var header [5]byte
+	for {
+		n, err := io.ReadFull(src, header[:])
+		if err == io.EOF && n == 0 {
+			return total, nil
+		}
+		if err != nil {
+			return total, err
+		}
+		rawLen, encLen := int(binary.BigEndian.Uint16(header[1:3])), int(binary.BigEndian.Uint16(header[3:5]))
+		if rawLen == 0 || rawLen > blockSize || encLen == 0 || encLen > blockSize {
+			return total, errors.New("compress: invalid block length")
+		}
+		if _, err := io.ReadFull(src, encoded[:encLen]); err != nil {
+			return total, err
+		}
+		data := encoded[:encLen]
+		switch header[0] {
+		case markerRaw:
+			if rawLen != encLen {
+				return total, errors.New("compress: raw length mismatch")
+			}
+		case markerFlate:
+			input.Reset(data)
+			if reader == nil {
+				reader = flate.NewReader(&input)
+			} else if err := reader.(flate.Resetter).Reset(&input, nil); err != nil {
+				return total, err
+			}
+			count, readErr := io.ReadFull(reader, decoded[:rawLen])
+			extra, endErr := reader.Read(decoded[rawLen : rawLen+1])
+			if count != rawLen || (readErr != nil || extra != 0 || endErr != io.EOF) || input.Len() != 0 {
+				return total, errors.New("compress: invalid compressed block")
+			}
+			data = decoded[:rawLen]
+		default:
+			return total, errors.New("compress: unknown block mode")
+		}
+		if err := writeFull(dst, data); err != nil {
+			return total, err
+		}
+		total += int64(len(data))
 	}
-	if _, err := fw.Write(sample); err != nil {
-		return false
-	}
-	if err := fw.Close(); err != nil {
-		return false
-	}
-	return int(counter)*100 < len(sample)*compressIfPct
 }
-
-type countWriter int
-
-func (c *countWriter) Write(p []byte) (int, error) { *c += countWriter(len(p)); return len(p), nil }
-
-func writeAll(dst io.Writer, b []byte) (int64, error) {
-	n, err := dst.Write(b)
-	return int64(n), err
-}
-
-func ignoreEOF(err error) error {
-	if err == io.EOF || err == io.ErrUnexpectedEOF {
-		return nil
+func writeFull(w io.Writer, data []byte) error {
+	n, err := w.Write(data)
+	if err == nil && n != len(data) {
+		return io.ErrShortWrite
 	}
 	return err
 }

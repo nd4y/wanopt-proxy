@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"strconv"
+	"strings"
 )
 
 // Address types, mirroring SOCKS5 so we can pass addresses through untouched.
@@ -57,13 +58,13 @@ func ParseAddress(hostport string) (Address, error) {
 		} else {
 			a.Atyp, a.IP = AtypIPv6, ip.To16()
 		}
-		return a, nil
+		return a, a.Validate()
 	}
 	if len(host) > 255 {
 		return Address{}, errors.New("protocol: domain name too long")
 	}
 	a.Atyp, a.Host = AtypDomain, host
-	return a, nil
+	return a, a.Validate()
 }
 
 // Encode appends the wire form of the address to b and returns the result.
@@ -122,7 +123,7 @@ func ReadAddress(r io.Reader) (Address, error) {
 		return Address{}, err
 	}
 	a.Port = binary.BigEndian.Uint16(port[:])
-	return a, nil
+	return a, a.Validate()
 }
 
 // decodeAddress parses an address from the front of buf, returning the address
@@ -162,5 +163,41 @@ func decodeAddress(buf []byte) (Address, int, error) {
 	}
 	a.Port = binary.BigEndian.Uint16(buf[off : off+2])
 	off += 2
-	return a, off, nil
+	return a, off, a.Validate()
+}
+
+// Validate checks the address independent of its wire representation. Port zero
+// remains valid for SOCKS UDP ASSOCIATE binding; egress callers reject it.
+func (a Address) Validate() error {
+	switch a.Atyp {
+	case AtypIPv4:
+		if a.IP.To4() == nil {
+			return errBadAddress
+		}
+	case AtypIPv6:
+		if a.IP.To16() == nil {
+			return errBadAddress
+		}
+	case AtypDomain:
+		if net.ParseIP(a.Host) != nil {
+			return nil
+		}
+		host := strings.TrimSuffix(a.Host, ".")
+		if len(host) == 0 || len(host) > 253 {
+			return errBadAddress
+		}
+		for _, label := range strings.Split(host, ".") {
+			if len(label) == 0 || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
+				return errBadAddress
+			}
+			for _, c := range label {
+				if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_') {
+					return errBadAddress
+				}
+			}
+		}
+	default:
+		return errBadAddress
+	}
+	return nil
 }

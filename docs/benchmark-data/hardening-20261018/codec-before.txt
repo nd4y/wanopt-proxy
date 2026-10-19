@@ -1,0 +1,9 @@
+goos: linux
+goarch: amd64
+pkg: wanopt/internal/compress
+cpu: AMD Ryzen 7 8845HS w/ Radeon 780M Graphics     
+BenchmarkBlockCodec/random/encode         	   10000	    205756 ns/op	5096.21 MB/s	   82080 B/op	       5 allocs/op
+BenchmarkBlockCodec/random/encode         	   10000	    208895 ns/op	5019.63 MB/s	   82080 B/op	       5 allocs/op
+BenchmarkBlockCodec/random/encode         	   13996	    177030 ns/op	5923.16 MB/s	   82080 B/op	       5 allocs/op
+PASS
+ok  	wanopt/internal/compress	8.455s

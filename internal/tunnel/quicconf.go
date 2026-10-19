@@ -1,42 +1,36 @@
 package tunnel
 
 import (
-	"context"
-	"time"
-
 	"github.com/quic-go/quic-go"
-	"github.com/quic-go/quic-go/logging"
+	"time"
 )
 
-// Default flow-control windows. Large connection/stream receive windows are the
-// single most important throughput lever on high bandwidth-delay-product (WAN)
-// links, since they cap how much data can be in flight before an ACK.
-//
-// Note on congestion control: quic-go v0.48 uses CUBIC internally and does not
-// expose a public switch for BBR, so we cannot select it here. The receive
-// window tuning below is what actually unlocks throughput on fat, long links.
 const (
-	defaultMaxStreamRecvWindow = 16 << 20 // 16 MiB
-	defaultMaxConnRecvWindow   = 24 << 20 // 24 MiB
+	defaultMaxStreamRecvWindow = 16 << 20
+	defaultMaxConnRecvWindow   = 24 << 20
 	initialStreamRecvWindow    = 512 << 10
 	initialConnRecvWindow      = 768 << 10
 )
 
-// QUICOptions configures NewQUICConfig.
 type QUICOptions struct {
+	CongestionControl   string
 	EnableDatagrams     bool
 	IdleTimeout         time.Duration
-	MaxStreamRecvWindow uint64 // 0 -> default
-	MaxConnRecvWindow   uint64 // 0 -> default
-	Allow0RTT           bool   // server side
+	HandshakeTimeout    time.Duration
+	MaxStreamRecvWindow uint64
+	MaxConnRecvWindow   uint64
+	MaxIncomingStreams  int64
 	TokenStore          quic.TokenStore
-	Tracer              func(context.Context, logging.Perspective, quic.ConnectionID) *logging.ConnectionTracer
+	// Allow0RTT is retained for source compatibility. Early data is never accepted.
+	Allow0RTT bool
 }
 
-// NewQUICConfig builds a tuned *quic.Config shared by client and server.
 func NewQUICConfig(o QUICOptions) *quic.Config {
 	if o.IdleTimeout <= 0 {
 		o.IdleTimeout = 60 * time.Second
+	}
+	if o.HandshakeTimeout <= 0 {
+		o.HandshakeTimeout = 10 * time.Second
 	}
 	if o.MaxStreamRecvWindow == 0 {
 		o.MaxStreamRecvWindow = defaultMaxStreamRecvWindow
@@ -44,16 +38,18 @@ func NewQUICConfig(o QUICOptions) *quic.Config {
 	if o.MaxConnRecvWindow == 0 {
 		o.MaxConnRecvWindow = defaultMaxConnRecvWindow
 	}
-	return &quic.Config{
-		EnableDatagrams:                o.EnableDatagrams,
-		MaxIdleTimeout:                 o.IdleTimeout,
-		KeepAlivePeriod:                o.IdleTimeout / 3,
-		InitialStreamReceiveWindow:     initialStreamRecvWindow,
-		MaxStreamReceiveWindow:         o.MaxStreamRecvWindow,
-		InitialConnectionReceiveWindow: initialConnRecvWindow,
-		MaxConnectionReceiveWindow:     o.MaxConnRecvWindow,
-		Allow0RTT:                      o.Allow0RTT,
-		TokenStore:                     o.TokenStore,
-		Tracer:                         o.Tracer,
+	if o.MaxIncomingStreams == 0 {
+		o.MaxIncomingStreams = 128
 	}
+	return configureCongestion(&quic.Config{
+		EnableDatagrams:      o.EnableDatagrams,
+		HandshakeIdleTimeout: o.HandshakeTimeout / 2,
+		MaxIdleTimeout:       o.IdleTimeout, KeepAlivePeriod: o.IdleTimeout / 3,
+		InitialStreamReceiveWindow:     min(initialStreamRecvWindow, o.MaxStreamRecvWindow),
+		MaxStreamReceiveWindow:         o.MaxStreamRecvWindow,
+		InitialConnectionReceiveWindow: min(initialConnRecvWindow, o.MaxConnRecvWindow),
+		MaxConnectionReceiveWindow:     o.MaxConnRecvWindow,
+		MaxIncomingStreams:             o.MaxIncomingStreams, MaxIncomingUniStreams: 3,
+		Allow0RTT: false, TokenStore: o.TokenStore,
+	}, o.CongestionControl)
 }

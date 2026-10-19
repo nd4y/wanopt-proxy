@@ -1,0 +1,28 @@
+{
+  "source_base": "88fbe38901713ff2975870f89b33e20de86c258d",
+  "code_commit": "761e1c6d3d043247942ff3cfd19b21a5bc6e8fea",
+  "bbr_loss_statistics_supported": false,
+  "prior_pr_head": "081a144268798a13d6ee412c819da8c640f1d523",
+  "patch_sha256": {
+    "wanopt.patch": "f7329a21e5217f3f06506557253227ba7439161819b7f0096580acb7ef749e61",
+    "quic-go.patch": "be0cc1410af6b52a950a51cd75dcb9ad0b48e6fc6a1a04ad17e0a5549c469237"
+  },
+  "binary_sha256": {
+    "wanopt-client": "2b70ca0bb28e574e56fc64da584c486c59f21cc67764ce94138c217291cf05ec",
+    "wanopt-server": "f15eb7eb48628b6152ea1636197518c84188b623de5555f1d7b994ec432925d8",
+    "wanbench": "15554faa8a55faddbba7f4c3a2033d3a9797cc4250f6aa50aed8f07ab384d142"
+  },
+  "test_script_sha256": {
+    "phase4.py": "73c936dc8b2f19f7a909704b3ae0362ffba06676d4c87c5e268a544b88770faf",
+    "probe.py": "25a626688b5c958cc406d7a906302615db1203757293e972e78521ba33a8f860",
+    "remote-ns.py": "a9edf7112f96febc1d91293796e6a6e80acd3bdbcb8727dbe00fa94529aa23aa",
+    "observe.py": "bf5ec83ef1524a104872642a665cf0f3ac1a8d243108b2b5e0a0617bcde335d3",
+    "functional.py": "98101d292c1e04e720959a4d13dd00804e4f348d16301b3163a9f2f30353c4a3",
+    "setup-v2.py": "87894e01a6ed7689a81bb18818ade6253981f9d9537b63399e0ba11a19fa818f",
+    "resource-stats.py": "8e55054093ed08eafe207060c795e2328cafee9f6da1988340f4fe9e4039bfee"
+  },
+  "baseline_binary_sha256": {
+    "wanopt-client": "cef1eb89df5b00ee01d751cdc84596d83de76d188680fe1d6350182d45b31768",
+    "wanopt-server": "a8d694ba1bab261fd6c776935cbb7ab0eca5a22d269093e20cb3de14b607898c"
+  }
+}

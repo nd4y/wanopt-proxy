@@ -1,0 +1,112 @@
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1200/0s
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1200/1ns
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1200/1.1µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1200/1.199µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1200/1.2µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1200/1.279µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1200/1.28µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1200/1.3µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1200/1.471µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1472/0s
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1472/1ns
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1472/1.1µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1472/1.199µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1472/1.2µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1472/1.279µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1472/1.28µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1472/1.3µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1472/1.471µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idle1200/0s
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idle1200/1ns
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idle1200/1.1µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idle1200/1.199µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idle1200/1.2µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idle1200/1.279µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idle1200/1.28µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idle1200/1.3µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idle1200/1.471µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idle1472/0s
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idle1472/1ns
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idle1472/1.1µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idle1472/1.199µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idle1472/1.2µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idle1472/1.279µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idle1472/1.28µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idle1472/1.3µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idle1472/1.471µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenShrink/0s
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenShrink/1ns
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenShrink/1.1µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenShrink/1.199µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenShrink/1.2µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenShrink/1.279µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenShrink/1.28µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenShrink/1.3µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenShrink/1.471µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenGrow/0s
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenGrow/1ns
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenGrow/1.1µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenGrow/1.199µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenGrow/1.2µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenGrow/1.279µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenGrow/1.28µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenGrow/1.3µs
+=== RUN   TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenGrow/1.471µs
+--- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence (0.01s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1200/0s (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1200/1ns (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1200/1.1µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1200/1.199µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1200/1.2µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1200/1.279µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1200/1.28µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1200/1.3µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1200/1.471µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1472/0s (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1472/1ns (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1472/1.1µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1472/1.199µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1472/1.2µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1472/1.279µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1472/1.28µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1472/1.3µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/constructor1472/1.471µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idle1200/0s (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idle1200/1ns (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idle1200/1.1µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idle1200/1.199µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idle1200/1.2µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idle1200/1.279µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idle1200/1.28µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idle1200/1.3µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idle1200/1.471µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idle1472/0s (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idle1472/1ns (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idle1472/1.1µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idle1472/1.199µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idle1472/1.2µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idle1472/1.279µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idle1472/1.28µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idle1472/1.3µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idle1472/1.471µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenShrink/0s (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenShrink/1ns (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenShrink/1.1µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenShrink/1.199µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenShrink/1.2µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenShrink/1.279µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenShrink/1.28µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenShrink/1.3µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenShrink/1.471µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenGrow/0s (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenGrow/1ns (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenGrow/1.1µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenGrow/1.199µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenGrow/1.2µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenGrow/1.279µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenGrow/1.28µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenGrow/1.3µs (0.00s)
+    --- PASS: TestStabilityReviewPacerBudgetDeadlineCoherence/idleThenGrow/1.471µs (0.00s)
+PASS
+ok  	wanopt/internal/congestion/bbr	1.033s

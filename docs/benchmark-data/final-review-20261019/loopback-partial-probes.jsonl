@@ -1,0 +1,4 @@
+{"phase": "before_idle", "direction": "POST", "chunk_bytes": 1024, "bytes": 4194304, "sha256": "a1cb1bcb34431d0eb32645d7340a6556bd889d74bcbc7f1b47a56030690384ba", "integrity": true, "seconds": 0.03195720100120525}
+{"phase": "before_idle", "direction": "GET", "chunk_bytes": 1024, "bytes": 4194304, "sha256": "a1cb1bcb34431d0eb32645d7340a6556bd889d74bcbc7f1b47a56030690384ba", "integrity": true, "seconds": 0.026613100000759005}
+{"phase": "after_idle", "direction": "POST", "chunk_bytes": 1024, "bytes": 4194304, "sha256": "a1cb1bcb34431d0eb32645d7340a6556bd889d74bcbc7f1b47a56030690384ba", "integrity": true, "seconds": 0.07789320100164332}
+{"phase": "after_idle", "direction": "GET", "chunk_bytes": 1024, "bytes": 4194304, "sha256": "a1cb1bcb34431d0eb32645d7340a6556bd889d74bcbc7f1b47a56030690384ba", "integrity": true, "seconds": 0.049323000999720534}

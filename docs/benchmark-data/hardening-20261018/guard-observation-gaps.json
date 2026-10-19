@@ -1,0 +1,12 @@
+[
+  {
+    "from_elapsed": 420.2372121139997,
+    "to_elapsed": 4921.612065025149,
+    "span_without_guard_observations_seconds": 4501.374852911149
+  },
+  {
+    "from_elapsed": 10121.19438612615,
+    "to_elapsed": 10446.01971073867,
+    "span_without_guard_observations_seconds": 324.8253246125205
+  }
+]

@@ -1,0 +1,11 @@
+# Optional small-node resource envelope. Pair with docs/operations.md sizing.
+services:
+  wanopt-server:
+    cpus: 1.0
+    cpu_shares: 256
+    mem_limit: 128m
+    memswap_limit: 128m
+    pids_limit: 128
+    environment:
+      GOMAXPROCS: "1"
+      GOMEMLIMIT: "64MiB"

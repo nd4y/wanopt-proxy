@@ -1,0 +1,5 @@
+--- FAIL: TestAdapterReportsDeclaredPacketAndByteLoss (0.00s)
+    cc_adapter_stats_test.go:19: loss stats absent/wrong: packets=0 bytes=0
+FAIL
+FAIL	github.com/quic-go/quic-go/internal/ackhandler	0.009s
+FAIL

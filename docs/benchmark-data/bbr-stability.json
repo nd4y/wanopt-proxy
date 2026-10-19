@@ -1,0 +1,445 @@
+[
+  {
+    "integrity": true,
+    "transfers": [
+      {
+        "bytes": 1048576,
+        "connection_reused": true,
+        "direction": "GET",
+        "integrity": true,
+        "kind": "text",
+        "label": "stability-0",
+        "logical_bytes": 1048576,
+        "mbps": 17.569008668552673,
+        "response_close": false,
+        "seconds": 0.477466211,
+        "warmed": false
+      },
+      {
+        "bytes": 1048576,
+        "connection_reused": true,
+        "direction": "POST",
+        "integrity": true,
+        "kind": "text",
+        "label": "stability-1",
+        "logical_bytes": 1048576,
+        "mbps": 23.17335734635184,
+        "response_close": false,
+        "seconds": 0.361993641,
+        "warmed": false
+      },
+      {
+        "bytes": 1048576,
+        "connection_reused": true,
+        "direction": "GET",
+        "integrity": true,
+        "kind": "text",
+        "label": "stability-2",
+        "logical_bytes": 1048576,
+        "mbps": 23.122092722314886,
+        "response_close": false,
+        "seconds": 0.362796227,
+        "warmed": false
+      },
+      {
+        "bytes": 1048576,
+        "connection_reused": true,
+        "direction": "POST",
+        "integrity": true,
+        "kind": "text",
+        "label": "stability-3",
+        "logical_bytes": 1048576,
+        "mbps": 22.802899469381988,
+        "response_close": false,
+        "seconds": 0.367874621,
+        "warmed": false
+      }
+    ],
+    "wire_tx_bytes": 381426,
+    "wire_rx_bytes": 380634,
+    "cpu_usec": 258817,
+    "throttled_usec": 68812
+  },
+  {
+    "integrity": true,
+    "transfers": [
+      {
+        "bytes": 1048576,
+        "connection_reused": true,
+        "direction": "GET",
+        "integrity": true,
+        "kind": "text",
+        "label": "stability-0",
+        "logical_bytes": 1048576,
+        "mbps": 29.757128941742316,
+        "response_close": false,
+        "seconds": 0.281902465,
+        "warmed": false
+      },
+      {
+        "bytes": 1048576,
+        "connection_reused": true,
+        "direction": "POST",
+        "integrity": true,
+        "kind": "text",
+        "label": "stability-1",
+        "logical_bytes": 1048576,
+        "mbps": 27.021781878558887,
+        "response_close": false,
+        "seconds": 0.310438743,
+        "warmed": false
+      },
+      {
+        "bytes": 1048576,
+        "connection_reused": true,
+        "direction": "GET",
+        "integrity": true,
+        "kind": "text",
+        "label": "stability-2",
+        "logical_bytes": 1048576,
+        "mbps": 31.79077456371338,
+        "response_close": false,
+        "seconds": 0.263869255,
+        "warmed": false
+      },
+      {
+        "bytes": 1048576,
+        "connection_reused": true,
+        "direction": "POST",
+        "integrity": true,
+        "kind": "text",
+        "label": "stability-3",
+        "logical_bytes": 1048576,
+        "mbps": 22.52439092827973,
+        "response_close": false,
+        "seconds": 0.3724233,
+        "warmed": false
+      }
+    ],
+    "wire_tx_bytes": 379855,
+    "wire_rx_bytes": 377969,
+    "cpu_usec": 258713,
+    "throttled_usec": 0
+  },
+  {
+    "integrity": true,
+    "transfers": [
+      {
+        "bytes": 1048576,
+        "connection_reused": true,
+        "direction": "GET",
+        "integrity": true,
+        "kind": "text",
+        "label": "stability-0",
+        "logical_bytes": 1048576,
+        "mbps": 28.19401624235406,
+        "response_close": false,
+        "seconds": 0.297531502,
+        "warmed": false
+      },
+      {
+        "bytes": 1048576,
+        "connection_reused": true,
+        "direction": "POST",
+        "integrity": true,
+        "kind": "text",
+        "label": "stability-1",
+        "logical_bytes": 1048576,
+        "mbps": 21.28254589240254,
+        "response_close": false,
+        "seconds": 0.394154348,
+        "warmed": false
+      },
+      {
+        "bytes": 1048576,
+        "connection_reused": true,
+        "direction": "GET",
+        "integrity": true,
+        "kind": "text",
+        "label": "stability-2",
+        "logical_bytes": 1048576,
+        "mbps": 30.032282220210618,
+        "response_close": false,
+        "seconds": 0.279319698,
+        "warmed": false
+      },
+      {
+        "bytes": 1048576,
+        "connection_reused": true,
+        "direction": "POST",
+        "integrity": true,
+        "kind": "text",
+        "label": "stability-3",
+        "logical_bytes": 1048576,
+        "mbps": 27.078795342416782,
+        "response_close": false,
+        "seconds": 0.309785125,
+        "warmed": false
+      }
+    ],
+    "wire_tx_bytes": 379952,
+    "wire_rx_bytes": 375762,
+    "cpu_usec": 253024,
+    "throttled_usec": 0
+  },
+  {
+    "integrity": true,
+    "recovery_seconds": 0.7723298594355583,
+    "attempts": [
+      {
+        "ok": true
+      }
+    ],
+    "transfer": {
+      "bytes": 1048576,
+      "connection_reused": true,
+      "direction": "GET",
+      "integrity": true,
+      "kind": "text",
+      "label": "stability-0",
+      "logical_bytes": 1048576,
+      "mbps": 20.338981587871164,
+      "response_close": false,
+      "seconds": 0.412439923,
+      "warmed": false
+    },
+    "wire_tx_bytes": 7036,
+    "wire_rx_bytes": 187274,
+    "cpu_usec": 126525,
+    "throttled_usec": 0
+  },
+  {
+    "integrity": true,
+    "recovery_seconds": 0.49014277942478657,
+    "attempts": [
+      {
+        "ok": true
+      }
+    ],
+    "transfer": {
+      "bytes": 1048576,
+      "connection_reused": true,
+      "direction": "POST",
+      "integrity": true,
+      "kind": "text",
+      "label": "stability-0",
+      "logical_bytes": 1048576,
+      "mbps": 22.811637630038934,
+      "response_close": false,
+      "seconds": 0.367733704,
+      "warmed": false
+    },
+    "wire_tx_bytes": 184070,
+    "wire_rx_bytes": 5920,
+    "cpu_usec": 124594,
+    "throttled_usec": 0
+  },
+  {
+    "integrity": true,
+    "recovery_seconds": 0.8605841007083654,
+    "attempts": [
+      {
+        "ok": true
+      }
+    ],
+    "transfer": {
+      "bytes": 1048576,
+      "connection_reused": true,
+      "direction": "GET",
+      "integrity": true,
+      "kind": "text",
+      "label": "stability-0",
+      "logical_bytes": 1048576,
+      "mbps": 20.325327483306836,
+      "response_close": false,
+      "seconds": 0.412716991,
+      "warmed": false
+    },
+    "wire_tx_bytes": 10354,
+    "wire_rx_bytes": 189051,
+    "cpu_usec": 124801,
+    "throttled_usec": 0
+  },
+  {
+    "integrity": true,
+    "recovery_seconds": 0.4916796013712883,
+    "attempts": [
+      {
+        "ok": true
+      }
+    ],
+    "transfer": {
+      "bytes": 1048576,
+      "connection_reused": true,
+      "direction": "POST",
+      "integrity": true,
+      "kind": "text",
+      "label": "stability-0",
+      "logical_bytes": 1048576,
+      "mbps": 22.784733352314706,
+      "response_close": false,
+      "seconds": 0.368167925,
+      "warmed": false
+    },
+    "wire_tx_bytes": 184140,
+    "wire_rx_bytes": 5872,
+    "cpu_usec": 116893,
+    "throttled_usec": 0
+  },
+  {
+    "integrity": true,
+    "recovery_seconds": 0.8991578295826912,
+    "attempts": [
+      {
+        "ok": true
+      }
+    ],
+    "transfer": {
+      "bytes": 1048576,
+      "connection_reused": true,
+      "direction": "GET",
+      "integrity": true,
+      "kind": "text",
+      "label": "stability-0",
+      "logical_bytes": 1048576,
+      "mbps": 21.343888194792083,
+      "response_close": false,
+      "seconds": 0.393021549,
+      "warmed": false
+    },
+    "wire_tx_bytes": 15365,
+    "wire_rx_bytes": 191944,
+    "cpu_usec": 120226,
+    "throttled_usec": 0
+  },
+  {
+    "integrity": true,
+    "recovery_seconds": 0.4806434251368046,
+    "attempts": [
+      {
+        "ok": true
+      }
+    ],
+    "transfer": {
+      "bytes": 1048576,
+      "connection_reused": true,
+      "direction": "POST",
+      "integrity": true,
+      "kind": "text",
+      "label": "stability-0",
+      "logical_bytes": 1048576,
+      "mbps": 23.088243655948528,
+      "response_close": false,
+      "seconds": 0.363328113,
+      "warmed": false
+    },
+    "wire_tx_bytes": 183927,
+    "wire_rx_bytes": 5798,
+    "cpu_usec": 109173,
+    "throttled_usec": 0
+  },
+  {
+    "integrity": true,
+    "recovery_seconds": 0.8783506955951452,
+    "attempts": [
+      {
+        "ok": true
+      }
+    ],
+    "transfer": {
+      "bytes": 1048576,
+      "connection_reused": true,
+      "direction": "GET",
+      "integrity": true,
+      "kind": "text",
+      "label": "stability-0",
+      "logical_bytes": 1048576,
+      "mbps": 21.583707102185045,
+      "response_close": false,
+      "seconds": 0.388654644,
+      "warmed": false
+    },
+    "wire_tx_bytes": 12654,
+    "wire_rx_bytes": 191773,
+    "cpu_usec": 125037,
+    "throttled_usec": 0
+  },
+  {
+    "integrity": true,
+    "recovery_seconds": 0.4831927474588156,
+    "attempts": [
+      {
+        "ok": true
+      }
+    ],
+    "transfer": {
+      "bytes": 1048576,
+      "connection_reused": true,
+      "direction": "POST",
+      "integrity": true,
+      "kind": "text",
+      "label": "stability-0",
+      "logical_bytes": 1048576,
+      "mbps": 22.869489523497275,
+      "response_close": false,
+      "seconds": 0.366803465,
+      "warmed": false
+    },
+    "wire_tx_bytes": 183994,
+    "wire_rx_bytes": 5577,
+    "cpu_usec": 114268,
+    "throttled_usec": 0
+  },
+  {
+    "integrity": true,
+    "recovery_seconds": 0.8062604274600744,
+    "attempts": [
+      {
+        "ok": true
+      }
+    ],
+    "transfer": {
+      "bytes": 1048576,
+      "connection_reused": true,
+      "direction": "GET",
+      "integrity": true,
+      "kind": "text",
+      "label": "stability-0",
+      "logical_bytes": 1048576,
+      "mbps": 17.15865513425976,
+      "response_close": false,
+      "seconds": 0.488884935,
+      "warmed": false
+    },
+    "wire_tx_bytes": 7249,
+    "wire_rx_bytes": 186458,
+    "cpu_usec": 121617,
+    "throttled_usec": 0
+  },
+  {
+    "integrity": true,
+    "recovery_seconds": 0.4942406639456749,
+    "attempts": [
+      {
+        "ok": true
+      }
+    ],
+    "transfer": {
+      "bytes": 1048576,
+      "connection_reused": true,
+      "direction": "POST",
+      "integrity": true,
+      "kind": "text",
+      "label": "stability-0",
+      "logical_bytes": 1048576,
+      "mbps": 22.977011147838823,
+      "response_close": false,
+      "seconds": 0.365086997,
+      "warmed": false
+    },
+    "wire_tx_bytes": 183647,
+    "wire_rx_bytes": 5932,
+    "cpu_usec": 128320,
+    "throttled_usec": 0
+  }
+]

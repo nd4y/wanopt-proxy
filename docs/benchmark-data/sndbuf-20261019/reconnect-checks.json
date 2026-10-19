@@ -1,0 +1,41 @@
+{
+  "client": {
+    "19080": {
+      "first": 0.0,
+      "last": 0.0,
+      "samples": 110
+    },
+    "19081": {
+      "first": 0.0,
+      "last": 0.0,
+      "samples": 110
+    },
+    "19082": {
+      "first": 5.0,
+      "last": 5.0,
+      "samples": 110
+    },
+    "19083": {
+      "first": 5.0,
+      "last": 5.0,
+      "samples": 110
+    }
+  },
+  "server": {
+    "19101": {
+      "first": 0.0,
+      "last": 0.0,
+      "samples": 110
+    },
+    "19102": {
+      "first": 0.0,
+      "last": 0.0,
+      "samples": 110
+    },
+    "19103": {
+      "first": 0.0,
+      "last": 0.0,
+      "samples": 110
+    }
+  }
+}

@@ -1,0 +1,59 @@
+=== RUN   TestPacerUsesCurrentMTUAtConstructionAndAfterIdle
+=== RUN   TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1200/rtt_100ms/restart_false/first_1104
+    pacer_mtu_test.go:50: burst budget 11696, want 10896 for current MTU 1200
+=== RUN   TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1200/rtt_100ms/restart_false/first_1200
+    pacer_mtu_test.go:50: burst budget 11600, want 10800 for current MTU 1200
+=== RUN   TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1200/rtt_100ms/restart_true/first_1104
+    pacer_mtu_test.go:50: burst budget 11696, want 10896 for current MTU 1200
+=== RUN   TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1200/rtt_100ms/restart_true/first_1200
+    pacer_mtu_test.go:50: burst budget 11600, want 10800 for current MTU 1200
+=== RUN   TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1200/rtt_3s/restart_false/first_1104
+    pacer_mtu_test.go:50: burst budget 11696, want 10896 for current MTU 1200
+=== RUN   TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1200/rtt_3s/restart_false/first_1200
+    pacer_mtu_test.go:50: burst budget 11600, want 10800 for current MTU 1200
+=== RUN   TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1200/rtt_3s/restart_true/first_1104
+    pacer_mtu_test.go:50: burst budget 11696, want 10896 for current MTU 1200
+=== RUN   TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1200/rtt_3s/restart_true/first_1200
+    pacer_mtu_test.go:50: burst budget 11600, want 10800 for current MTU 1200
+=== RUN   TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1472/rtt_100ms/restart_false/first_1104
+    pacer_mtu_test.go:50: burst budget 11696, want 13616 for current MTU 1472
+    pacer_mtu_test.go:60: pacer requests immediate send without a current-MTU budget
+=== RUN   TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1472/rtt_100ms/restart_false/first_1472
+    pacer_mtu_test.go:50: burst budget 11328, want 13248 for current MTU 1472
+=== RUN   TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1472/rtt_100ms/restart_true/first_1104
+    pacer_mtu_test.go:50: burst budget 11696, want 13616 for current MTU 1472
+    pacer_mtu_test.go:60: pacer requests immediate send without a current-MTU budget
+=== RUN   TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1472/rtt_100ms/restart_true/first_1472
+    pacer_mtu_test.go:50: burst budget 11328, want 13248 for current MTU 1472
+=== RUN   TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1472/rtt_3s/restart_false/first_1104
+    pacer_mtu_test.go:50: burst budget 11696, want 13616 for current MTU 1472
+    pacer_mtu_test.go:60: pacer requests immediate send without a current-MTU budget
+=== RUN   TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1472/rtt_3s/restart_false/first_1472
+    pacer_mtu_test.go:50: burst budget 11328, want 13248 for current MTU 1472
+    pacer_mtu_test.go:67: pacing deadline has 1280 bytes; sender requires 1472
+=== RUN   TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1472/rtt_3s/restart_true/first_1104
+    pacer_mtu_test.go:50: burst budget 11696, want 13616 for current MTU 1472
+    pacer_mtu_test.go:60: pacer requests immediate send without a current-MTU budget
+=== RUN   TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1472/rtt_3s/restart_true/first_1472
+    pacer_mtu_test.go:50: burst budget 11328, want 13248 for current MTU 1472
+    pacer_mtu_test.go:67: pacing deadline has 1280 bytes; sender requires 1472
+--- FAIL: TestPacerUsesCurrentMTUAtConstructionAndAfterIdle (0.00s)
+    --- FAIL: TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1200/rtt_100ms/restart_false/first_1104 (0.00s)
+    --- FAIL: TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1200/rtt_100ms/restart_false/first_1200 (0.00s)
+    --- FAIL: TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1200/rtt_100ms/restart_true/first_1104 (0.00s)
+    --- FAIL: TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1200/rtt_100ms/restart_true/first_1200 (0.00s)
+    --- FAIL: TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1200/rtt_3s/restart_false/first_1104 (0.00s)
+    --- FAIL: TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1200/rtt_3s/restart_false/first_1200 (0.00s)
+    --- FAIL: TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1200/rtt_3s/restart_true/first_1104 (0.00s)
+    --- FAIL: TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1200/rtt_3s/restart_true/first_1200 (0.00s)
+    --- FAIL: TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1472/rtt_100ms/restart_false/first_1104 (0.00s)
+    --- FAIL: TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1472/rtt_100ms/restart_false/first_1472 (0.00s)
+    --- FAIL: TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1472/rtt_100ms/restart_true/first_1104 (0.00s)
+    --- FAIL: TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1472/rtt_100ms/restart_true/first_1472 (0.00s)
+    --- FAIL: TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1472/rtt_3s/restart_false/first_1104 (0.00s)
+    --- FAIL: TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1472/rtt_3s/restart_false/first_1472 (0.00s)
+    --- FAIL: TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1472/rtt_3s/restart_true/first_1104 (0.00s)
+    --- FAIL: TestPacerUsesCurrentMTUAtConstructionAndAfterIdle/mtu_1472/rtt_3s/restart_true/first_1472 (0.00s)
+FAIL
+FAIL	wanopt/internal/congestion/bbr	0.012s
+FAIL

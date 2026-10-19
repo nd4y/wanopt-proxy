@@ -7,3 +7,12 @@ services:
     volumes:
       - ./configs:/etc/wanopt:ro
     command: ["-config", "/etc/wanopt/server.yaml"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

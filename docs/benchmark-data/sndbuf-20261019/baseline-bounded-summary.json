@@ -1,0 +1,14 @@
+{
+  "client": {
+    "samples": 542,
+    "max_queue_packets": 4096,
+    "max_socket_tx_memory": 2304,
+    "guard_failures": []
+  },
+  "server": {
+    "samples": 177,
+    "max_queue_packets": 146,
+    "max_socket_tx_memory": 960,
+    "guard_failures": []
+  }
+}

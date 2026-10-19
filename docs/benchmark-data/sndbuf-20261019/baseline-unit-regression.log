@@ -1,0 +1,5 @@
+--- FAIL: TestIdleRestartDiscardsStaleBandwidthAndWindow (0.00s)
+    idle_restart_test.go:39: reused stale idle model: cwnd=11534336 bandwidth=1000000000 startup=false
+FAIL
+FAIL	wanopt/internal/congestion/bbr	0.004s
+FAIL

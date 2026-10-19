@@ -1,0 +1,12 @@
+{
+  "exit_code": 0,
+  "failure": null,
+  "guard_failures": [],
+  "cleanup_exit_codes": [
+    0,
+    0
+  ],
+  "finished": 1792372839.5901315,
+  "elapsed": 6478.787829399109,
+  "measurements": 133
+}
