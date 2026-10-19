@@ -230,7 +230,7 @@ class Suite:
             raise AssertionError(f"{name}: expected gateway rejection 502, got {status}")
         self.record(name, expected_http_status=502)
 
-    def await_proxy_recovery(self, name):
+    def await_proxy_recovery(self, name, timeout=20):
         # A deliberately expired request can leave a closing pooled upstream
         # connection. Recovery is eventual and bounded; retain every attempt.
         code = """import http.client,json,sys
@@ -241,7 +241,7 @@ try:
 except Exception as e:print(json.dumps({'error':type(e).__name__}))
 finally:c.close()
 """
-        end = time.monotonic() + 20
+        end = time.monotonic() + timeout
         attempts = 0
         while time.monotonic() < end:
             if self.client.poll() is not None:
@@ -255,11 +255,12 @@ finally:c.close()
             except (RuntimeError, subprocess.TimeoutExpired) as error:
                 result = {"error": type(error).__name__}
             attempts += 1
-            self.report.setdefault("recovery_attempts", []).append({"case": name, "attempt": attempts, **result})
+            self.report.setdefault("recovery_attempts", []).append({"case": name, "attempt": attempts,
+                                                                    "deadline_seconds": timeout, **result})
             if result.get("status") == 200 and result.get("body") == "ok":
                 return
             time.sleep(min(.2, max(0, end - time.monotonic())))
-        raise RuntimeError(name + ": recovery did not become available within 20 seconds")
+        raise RuntimeError(name + f": recovery did not become available within {timeout} seconds")
 
     def drain(self):
         snapshots = []
@@ -337,7 +338,11 @@ finally:
             self.server = self.start(f"server-restart-{repeat}", "wanopt-server",
                                      ["-config", str(self.root / "server.json")], 1)
             self.ready(1, self.sm)
-            self.await_proxy_recovery(f"server-restart-{repeat}")
+            # Windows terminate() is a crash, not Unix SIGTERM: no QUIC close
+            # reaches the client. Default heartbeat detection can take10s+15s
+            # before reconnect, so a20s bound would contradict that policy.
+            deadline = 40 if os.name == "nt" else 20
+            self.await_proxy_recovery(f"server-restart-{repeat}", timeout=deadline)
             for direction in ["GET", "POST"]:
                 self.bench(f"server-restart-{repeat}-{direction}", direction, size=32768)
             current = metric(self.fetch(0, self.cm), "wanopt_tunnel_reconnects_total")
