@@ -19,6 +19,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.request
 
@@ -58,6 +59,8 @@ class Network:
         self.names = ["wvc" + suffix, "wvs" + suffix]
         self.links = ["wvcv" + suffix, "wvsv" + suffix]
         self.created = []
+        self.observations = []
+        self.observation_lock = threading.Lock()
 
     def prefix(self, side):
         return ["ip", "netns", "exec", self.names[side]] if self.enabled else []
@@ -84,6 +87,7 @@ class Network:
             command(p + ["ethtool", "-K", self.links[side], "gro", "off", "gso", "off", "tso", "off"])
 
     def profile(self, name):
+        self.observe("before-profile-" + name)
         for side in range(2) if self.enabled else []:
             p = self.prefix(side)
             command(p + ["tc", "qdisc", "del", "dev", self.links[side], "root"], check=False)
@@ -93,15 +97,41 @@ class Network:
                 if name != "latency":
                     args += ["5ms", "loss"] + (["0.1%", "rate", "100mbit"] if name == "moderate" else ["1%", "rate", "20mbit"])
                 command(p + args)
+        self.observe("after-profile-" + name)
+
+    def observe(self, phase):
+        if not self.enabled:
+            return
+        with self.observation_lock:
+            self.observe_locked(phase)
+
+    def observe_locked(self, phase):
+        nodes = [{"udp": counters, "qdisc": json.loads(command(self.prefix(side) +
+                  ["tc", "-s", "-j", "qdisc", "show", "dev", self.links[side]]).stdout)}
+                 for side, counters in enumerate(self.counters())]
+        previous = self.observations[-1] if self.observations else None
+        observation = {"phase": phase, "time": time.time(), "nodes": nodes}
+        self.observations.append(observation)
+        if previous:
+            try:
+                # Planned socket closes can cause NoPorts; never exempt buffers.
+                observation["udp_deltas"] = [check_udp(a["udp"], b["udp"], allow_closed_ports=True)
+                                              for a, b in zip(previous["nodes"], nodes)]
+            except AssertionError as error:
+                raise AssertionError(f"{previous['phase']} -> {phase}: {error}") from error
 
     def mtu(self, size):
+        self.observe("before-mtu-" + str(size))
         for side in range(2):
             command(self.prefix(side) + ["ip", "link", "set", self.links[side], "mtu", str(size)])
+        self.observe("after-mtu-" + str(size))
 
     def blackhole(self):
+        self.observe("before-blackhole")
         for side in range(2):
             command(self.prefix(side) + ["tc", "qdisc", "replace", "dev", self.links[side],
                                         "root", "netem", "loss", "100%"])
+        self.observe("after-blackhole")
 
     def counters(self):
         if not self.enabled:
@@ -129,6 +159,7 @@ class Suite:
         self.net = Network(options.netem)
         self.processes = []
         self.report = {"controller": options.cc, "netem": options.netem, "cases": [], "measurements": []}
+        self.report["network_observations"] = self.net.observations
         self.suffix = ".exe" if os.name == "nt" else ""
         self.client = None
 
@@ -199,6 +230,7 @@ class Suite:
         raise RuntimeError("readiness or lease drain timed out")
 
     def bench(self, name, direction, kind="random", proxy=True, extra=(), success=True, size=262144):
+        self.net.observe("before-bench-" + name)
         args = [self.binary("wanbench"), "-url", self.proxy_target if proxy else self.direct,
                 "-kind", kind, "-bytes", str(size), "-direction", direction,
                 "-request-timeout", "120s" if self.o.netem else "20s", "-label", name]
@@ -213,6 +245,7 @@ class Suite:
         ok = result.get("integrity") is True and p.returncode == 0
         self.report["measurements"].append({"case": name, "expected_success": success,
                                              "exit": p.returncode, "result": result})
+        self.net.observe("after-bench-" + name)
         if ok != success:
             self.report["cases"].append({"name": name, "passed": False})
             raise AssertionError(f"{name}: unexpected benchmark outcome: {result}")
@@ -527,6 +560,7 @@ finally:
             raise AssertionError("keygen overwrote an existing private key")
         self.record("keygen-never-overwrites")
         self.net.setup()
+        self.net.observe("initial")
         self.server = self.origin = None
         before = self.net.counters()
         origin_address = "0.0.0.0" if self.o.netem else "127.0.0.1"
