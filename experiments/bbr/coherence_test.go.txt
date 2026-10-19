@@ -1,0 +1,61 @@
+package bbr
+
+import (
+	"github.com/quic-go/quic-go/congestion"
+	"github.com/quic-go/quic-go/monotime"
+	"testing"
+	"time"
+)
+
+// Independent final-review probe. No network or production state is changed.
+func TestStabilityReviewPacerBudgetDeadlineCoherence(t *testing.T) {
+	for _, scenario := range []string{"constructor1200", "constructor1472", "idle1200", "idle1472", "idleThenShrink", "idleThenGrow"} {
+		for _, remaining := range []congestion.ByteCount{0, 1, 1100, 1199, 1200, 1279, 1280, 1300, 1471} {
+			t.Run(scenario+"/"+time.Duration(remaining).String(), func(t *testing.T) {
+				var b *bbrSender
+				now := monotime.Now()
+				switch scenario {
+				case "constructor1200", "constructor1472":
+					mtu := congestion.ByteCount(1200)
+					if scenario == "constructor1472" {
+						mtu = 1472
+					}
+					b = NewBbrSender(DefaultClock{}, mtu, ProfileStandard)
+					b.SetRTTStatsProvider(idleRTT{pto: 100 * time.Millisecond})
+				default:
+					var idle monotime.Time
+					b, idle = primedIdleSender(100 * time.Millisecond)
+					mtu := congestion.ByteCount(1200)
+					if scenario != "idle1200" {
+						mtu = 1472
+					}
+					b.SetMaxDatagramSize(mtu)
+					now = idle.Add(5 * time.Second)
+					b.OnPacketSent(now, 0, 2, 1104, true)
+					if scenario == "idleThenShrink" {
+						b.SetMaxDatagramSize(1200)
+					}
+					if scenario == "idleThenGrow" {
+						b.SetMaxDatagramSize(1500)
+					}
+				}
+				if remaining >= b.maxDatagramSize {
+					return
+				}
+				// Drain to an exact residual budget, including the old-default mismatch interval.
+				initial := b.pacer.Budget(now)
+				b.pacer.SentPacket(now, initial-remaining)
+				if b.HasPacingBudget(now) {
+					t.Fatal("probe setup did not exhaust one full datagram")
+				}
+				wake := b.TimeUntilSend(0)
+				if wake.IsZero() || !wake.After(now) {
+					t.Fatalf("budget=%d mtu=%d, unusable wake=%v", b.pacer.Budget(now), b.maxDatagramSize, wake)
+				}
+				if !b.HasPacingBudget(wake) {
+					t.Fatalf("wake has budget=%d below mtu=%d", b.pacer.Budget(wake), b.maxDatagramSize)
+				}
+			})
+		}
+	}
+}

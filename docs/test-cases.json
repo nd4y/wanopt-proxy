@@ -1,0 +1,750 @@
+{
+  "schema": 1,
+  "note": "Includes named root tests; complete executed subtest paths are retained in Actions JSON event artifacts.",
+  "cases": [
+    {
+      "file": "cmd/keygen/main_test.go",
+      "name": "TestKeygenDoesNotOverwrite",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "cmd/keygen/main_test.go",
+      "name": "TestKeygenRollsBackNewKeyOnCertificateConflict",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "experiments/bbr/coherence_test.go.txt",
+      "name": "TestStabilityReviewPacerBudgetDeadlineCoherence",
+      "workflow": "CI/experimental-bbr pinned recipe"
+    },
+    {
+      "file": "experiments/bbr/quic-go.patch:internal/ackhandler/cc_adapter_recovery_test.go",
+      "name": "TestAdapterExactHistoryTimeoutAndSpuriousLoss",
+      "workflow": "CI/experimental-bbr pinned recipe"
+    },
+    {
+      "file": "experiments/bbr/quic-go.patch:internal/ackhandler/cc_adapter_send_test.go",
+      "name": "TestAdapterUsesPreSendFlightThroughRealHandler",
+      "workflow": "CI/experimental-bbr pinned recipe"
+    },
+    {
+      "file": "experiments/bbr/quic-go.patch:internal/ackhandler/cc_adapter_stats_test.go",
+      "name": "TestAdapterReportsDeclaredPacketAndByteLoss",
+      "workflow": "CI/experimental-bbr pinned recipe"
+    },
+    {
+      "file": "experiments/bbr/quic-go.patch:internal/ackhandler/cc_adapter_test.go",
+      "name": "TestExternalControllerBatchAndMigration",
+      "workflow": "CI/experimental-bbr pinned recipe"
+    },
+    {
+      "file": "experiments/bbr/wanopt.patch:internal/congestion/bbr/bbr_sender_test.go",
+      "name": "TestNewBbrSenderAppliesProfiles",
+      "workflow": "CI/experimental-bbr pinned recipe"
+    },
+    {
+      "file": "experiments/bbr/wanopt.patch:internal/congestion/bbr/bbr_sender_test.go",
+      "name": "TestParseProfile",
+      "workflow": "CI/experimental-bbr pinned recipe"
+    },
+    {
+      "file": "experiments/bbr/wanopt.patch:internal/congestion/bbr/bbr_sender_test.go",
+      "name": "TestSetMaxDatagramSizeClampsCongestionWindow",
+      "workflow": "CI/experimental-bbr pinned recipe"
+    },
+    {
+      "file": "experiments/bbr/wanopt.patch:internal/congestion/bbr/bbr_sender_test.go",
+      "name": "TestSetMaxDatagramSizeHandlesInitialFallback",
+      "workflow": "CI/experimental-bbr pinned recipe"
+    },
+    {
+      "file": "experiments/bbr/wanopt.patch:internal/congestion/bbr/bbr_sender_test.go",
+      "name": "TestSetMaxDatagramSizeRescalesPacketSizedWindows",
+      "workflow": "CI/experimental-bbr pinned recipe"
+    },
+    {
+      "file": "experiments/bbr/wanopt.patch:internal/congestion/bbr/idle_restart_test.go",
+      "name": "TestIdleRestartDiscardsStaleBandwidthAndWindow",
+      "workflow": "CI/experimental-bbr pinned recipe"
+    },
+    {
+      "file": "experiments/bbr/wanopt.patch:internal/congestion/bbr/idle_restart_test.go",
+      "name": "TestIdleRestartPreservesActiveFlightAndWaitsForDrain",
+      "workflow": "CI/experimental-bbr pinned recipe"
+    },
+    {
+      "file": "experiments/bbr/wanopt.patch:internal/congestion/bbr/idle_restart_test.go",
+      "name": "TestIdleRestartRespectsPTOAndAckOnlyPackets",
+      "workflow": "CI/experimental-bbr pinned recipe"
+    },
+    {
+      "file": "experiments/bbr/wanopt.patch:internal/congestion/bbr/pacer_mtu_test.go",
+      "name": "TestPacerUsesCurrentMTUAtConstructionAndAfterIdle",
+      "workflow": "CI/experimental-bbr pinned recipe"
+    },
+    {
+      "file": "experiments/bbr/wanopt.patch:internal/congestion/bbr/reordering_test.go",
+      "name": "TestExactOutstandingHistoryPreservesReorderedSamples",
+      "workflow": "CI/experimental-bbr pinned recipe"
+    },
+    {
+      "file": "experiments/bbr/wanopt.patch:internal/tunnel/bbr_registration_test.go",
+      "name": "TestBBRConfigAndIndependentConnections",
+      "workflow": "CI/experimental-bbr pinned recipe"
+    },
+    {
+      "file": "internal/acl/acl_test.go",
+      "name": "TestDNSConcurrencyAndTimeout",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/acl/acl_test.go",
+      "name": "TestDialUsesExactlyOneApprovedResolution",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/acl/acl_test.go",
+      "name": "TestDomainDenialDoesNotResolve",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/acl/acl_test.go",
+      "name": "TestInvalidPolicyPortsAndNamesFailClosed",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/acl/acl_test.go",
+      "name": "TestNumericDomainCannotBypassCIDRDeny",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/acl/acl_test.go",
+      "name": "TestResolvedIPDeniesOverrideDomainAllow",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/admission/budget_test.go",
+      "name": "TestBudgetConcurrentRelease",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/client/client_test.go",
+      "name": "TestAuthenticationCancellationInterruptsRead",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/client/client_test.go",
+      "name": "TestOpenTCPReplyTimeoutReleasesRequestSlot",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/client/client_test.go",
+      "name": "TestPendingAndUDPSessionLimits",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/client/client_test.go",
+      "name": "TestPinAndPSKMismatchRejectAuthentication",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/client/client_test.go",
+      "name": "TestTLSResumptionStillAuthenticatesWithoutEarlyData",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/compress/adaptive_test.go",
+      "name": "TestAdaptiveSkipsIncompressibleAndResumes",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/compress/adaptive_test.go",
+      "name": "TestTinyReadsNeverWaitForBlockOrAllocateEncoder",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/compress/compress_test.go",
+      "name": "FuzzDecopy",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/compress/compress_test.go",
+      "name": "TestDecoderResetValidatesEveryBlock",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/compress/compress_test.go",
+      "name": "TestMalformedAndTruncatedFrames",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/compress/compress_test.go",
+      "name": "TestMixedBlocksDoNotLockCompressionMode",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/compress/compress_test.go",
+      "name": "TestRoundTrip",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/config/config_test.go",
+      "name": "TestClientValidation",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/config/config_test.go",
+      "name": "TestConfigurationSizeBound",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/config/config_test.go",
+      "name": "TestDefaultsAndPersistentPaths",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/config/config_test.go",
+      "name": "TestServerRejectsInvalidConfigurations",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/config/rotation_test.go",
+      "name": "TestRotationAndGlobalLimitValidation",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/decoy/decoy_test.go",
+      "name": "TestBuiltinEscapesBrandAndDoesNotAdvertiseWrongPort",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/decoy/decoy_test.go",
+      "name": "TestInvalidUpstreamRejected",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/decoy/decoy_test.go",
+      "name": "TestProxyRewritesHostAndPreservesResponse",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/integration/docker_test.go",
+      "name": "TestDockerImageAuthenticationAndRestart",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": "CI/build Docker runtime"
+    },
+    {
+      "file": "internal/metrics/metrics_test.go",
+      "name": "TestByteCountersAdvanceBeforeStreamEnds",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/metrics/metrics_test.go",
+      "name": "TestConnectionMetricsAggregateAndCleanUp",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/metrics/metrics_test.go",
+      "name": "TestDropLabelsAreBounded",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/metrics/operations_test.go",
+      "name": "TestOperationalMetricsBoundLabelsAndAccountCompression",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/protocol/protocol_test.go",
+      "name": "FuzzAddress",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/protocol/protocol_test.go",
+      "name": "FuzzDatagram",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/protocol/protocol_test.go",
+      "name": "TestAddressesRoundTrip",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/protocol/protocol_test.go",
+      "name": "TestDatagramBoundaries",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/protocol/protocol_test.go",
+      "name": "TestInvalidAddresses",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/protocol/protocol_test.go",
+      "name": "TestProtocolVersionRejectsV1",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/http_admission_test.go",
+      "name": "TestHTTPIdlePoolCannotExhaustAdmissionAcrossDestinations",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/http_admission_test.go",
+      "name": "TestHTTPReportsCapacityAsServiceUnavailable",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/http_compression_test.go",
+      "name": "TestCompressedHTTPConnCloseUnblocksWorkers",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/http_compression_test.go",
+      "name": "TestCompressedHTTPConnPreservesEOFAndRejectsCorruption",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/http_compression_test.go",
+      "name": "TestHTTPCompressionNegotiationAndRoundTrip",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/proxy_test.go",
+      "name": "TestEnsurePortIPv6",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/proxy_test.go",
+      "name": "TestHTTPBodyProgressAndPostKeepAlive",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/proxy_test.go",
+      "name": "TestHTTPBoundsHeadersAndPartialHeaderTime",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/proxy_test.go",
+      "name": "TestHTTPConnectBufferedBytesAndHalfClose",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/proxy_test.go",
+      "name": "TestHTTPEarlyResponseDuringChunkedUpload",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/proxy_test.go",
+      "name": "TestHTTPExpectContinueAndEarlyResponse",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/proxy_test.go",
+      "name": "TestHTTPKeepAliveAndConnectionHeaders",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/proxy_test.go",
+      "name": "TestHTTPRejectionDoesNotDrainIncompleteBody",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/proxy_test.go",
+      "name": "TestHTTPUpgrade",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/proxy_test.go",
+      "name": "TestRelayCancellationClosesBothSides",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/proxy_test.go",
+      "name": "TestRelayPreservesHalfClose",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/proxy_test.go",
+      "name": "TestSOCKSIPv6Reply",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/proxy_test.go",
+      "name": "TestSOCKSMethodsAndReservedFields",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/proxy_test.go",
+      "name": "TestSOCKSUDPValidation",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/proxy_test.go",
+      "name": "TestSharedAdmissionLimit",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/shutdown_test.go",
+      "name": "TestHTTPShutdownCancelsAndJoinsPendingTransportDial",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/shutdown_test.go",
+      "name": "TestListenersJoinActiveRelayHandlers",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/socks_udp_test.go",
+      "name": "TestSOCKSHandshakeTimeoutAndCancellation",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/socks_udp_test.go",
+      "name": "TestUDPIdleClosesControlAndAllPumps",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/socks_udp_test.go",
+      "name": "TestUDPRequestedSourceIPEnforced",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/socks_udp_test.go",
+      "name": "TestUDPRequestedSourcePortEnforced",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/socks_udp_test.go",
+      "name": "TestUDPSourcePinnedAfterValidPacket",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/proxy/udp_metrics_integration_test.go",
+      "name": "TestSOCKSUDPMetricsCountEachDatagramOnce",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/safefile/fifo_unix_test.go",
+      "name": "TestFIFORejectedWithoutWaitingForWriter",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/safefile/read_test.go",
+      "name": "TestRegularFileSizeAndType",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/admission_test.go",
+      "name": "TestClientActiveAndCodecLeaseLifetime",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/admission_test.go",
+      "name": "TestGlobalAdmissionAcrossConnectionsAndCodecFallback",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/auth_deadline_test.go",
+      "name": "TestUnauthenticatedKeepaliveCannotHoldConnectionCapacity",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/rotation_test.go",
+      "name": "TestLiveCredentialRotationRetainsGraceAndRevokesOld",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/rotation_test.go",
+      "name": "TestPreviousKeyExpiryClosesExistingSessions",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/server_test.go",
+      "name": "TestClientReconnectsAfterServerRestart",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/server_test.go",
+      "name": "TestConnectionAndStreamLimitsReleaseCapacity",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/server_test.go",
+      "name": "TestDatagramsRequireAuthentication",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/server_test.go",
+      "name": "TestDeniedAndRefusedRequestsReleaseStreams",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/server_test.go",
+      "name": "TestHTTP3DecoyStillServes",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/server_test.go",
+      "name": "TestServeClosesConnectionsOnListenerFailure",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/server_test.go",
+      "name": "TestShutdownClosesIdleTCPRelay",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/server_test.go",
+      "name": "TestTCPHalfClosePreservesDelayedResponse",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/udp_security_integration_test.go",
+      "name": "TestQPACKDecodedHeaderLimitEnforced",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/udp_security_integration_test.go",
+      "name": "TestRealQUICUnauthenticatedUDPDoesNotReachNetwork",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/udp_test.go",
+      "name": "TestUDPAuthenticationRequiredBeforeAnyEgress",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/udp_test.go",
+      "name": "TestUDPDomainFormCannotBypassCIDR",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/udp_test.go",
+      "name": "TestUDPEstablishedFlowBypassesFullAdmissionQueue",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/udp_test.go",
+      "name": "TestUDPFlowCreationRateBound",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/udp_test.go",
+      "name": "TestUDPFlowLimitAndShutdownJoinsPumps",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/udp_test.go",
+      "name": "TestUDPIdleFlowExpires",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/server/udp_test.go",
+      "name": "TestUDPPayloadLimitBothDirections",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/tunnel/rotation_test.go",
+      "name": "TestCredentialOverlapExpiryAndRejectedReload",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/tunnel/rotation_test.go",
+      "name": "TestCredentialSnapshotsConcurrent",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/tunnel/rotation_test.go",
+      "name": "TestNextPinExpiryAndResumption",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/tunnel/tunnel_test.go",
+      "name": "TestContextBindingCancellationAndIdempotentStop",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/tunnel/tunnel_test.go",
+      "name": "TestPinVerificationRunsOnResumedState",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/tunnel/tunnel_test.go",
+      "name": "TestProofBindingAndShortWrites",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "internal/tunnel/tunnel_test.go",
+      "name": "TestServerPublishesReadinessBeforeAuthenticationReply",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "tools/validation/test_assets.py",
+      "name": "test_corrupt_asset_is_rejected",
+      "workflow": "CI/test Python observation/asset checks (Linux and Windows)"
+    },
+    {
+      "file": "tools/validation/test_assets.py",
+      "name": "test_exact_asset_and_binary_hashes",
+      "workflow": "CI/test Python observation/asset checks (Linux and Windows)"
+    },
+    {
+      "file": "tools/validation/test_assets.py",
+      "name": "test_unsafe_archive_member_is_rejected",
+      "workflow": "CI/test Python observation/asset checks (Linux and Windows)"
+    },
+    {
+      "file": "tools/validation/test_assets.py",
+      "name": "test_wrong_source_is_rejected",
+      "workflow": "CI/test Python observation/asset checks (Linux and Windows)"
+    },
+    {
+      "file": "tools/validation/test_check.py",
+      "name": "test_existing_cumulative_error_is_not_a_new_failure",
+      "workflow": "CI/test Python observation/asset checks (Linux and Windows)"
+    },
+    {
+      "file": "tools/validation/test_check.py",
+      "name": "test_metric_sums_labeled_leases_without_prefix_collision",
+      "workflow": "CI/test Python observation/asset checks (Linux and Windows)"
+    },
+    {
+      "file": "tools/validation/test_check.py",
+      "name": "test_missing_udp_snapshot_is_rejected",
+      "workflow": "CI/test Python observation/asset checks (Linux and Windows)"
+    },
+    {
+      "file": "tools/validation/test_check.py",
+      "name": "test_udp_error_is_not_hidden_by_successful_packets",
+      "workflow": "CI/test Python observation/asset checks (Linux and Windows)"
+    },
+    {
+      "file": "tools/wanbench/main_test.go",
+      "name": "TestBenchmarkDetectsCorruptPayloadAndAbortRecovers",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "tools/wanbench/main_test.go",
+      "name": "TestBenchmarkPrebuiltFixturesAndDirections",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "tools/wanbench/main_test.go",
+      "name": "TestFixtureMemoryBound",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "tools/wanbench/stream_test.go",
+      "name": "TestContinuousStreamIntegrityBothDirections",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    },
+    {
+      "file": "tools/wanbench/stream_test.go",
+      "name": "TestStreamingRejectsEarlyUploadSuccess",
+      "workflow": "CI/test (Linux and Windows); Linux race",
+      "additional_gate": null
+    }
+  ]
+}

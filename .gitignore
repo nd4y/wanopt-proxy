@@ -4,3 +4,4 @@ cert.pem
 key.pem
 configs/server.yaml
 configs/client.yaml
+__pycache__/
