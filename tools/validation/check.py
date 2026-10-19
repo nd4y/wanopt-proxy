@@ -14,6 +14,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import select
 import signal
 import socket
 import subprocess
@@ -61,6 +62,7 @@ class Network:
         self.created = []
         self.observations = []
         self.observation_lock = threading.Lock()
+        self.active_profile = None
 
     def prefix(self, side):
         return ["ip", "netns", "exec", self.names[side]] if self.enabled else []
@@ -96,7 +98,14 @@ class Network:
                         "limit", "10000", "delay", "50ms"]
                 if name != "latency":
                     args += ["5ms", "loss"] + (["0.1%", "rate", "100mbit"] if name == "moderate" else ["1%", "rate", "20mbit"])
+                else:
+                    # An unbounded veth line is not a calibrated WAN: at high
+                    # speed its50ms delay can overflow a finite queue and add
+                    # unrequested loss. Match the moderate profile's100Mbit/s
+                    # capacity while removing its loss/jitter for this control.
+                    args += ["rate", "100mbit"]
                 command(p + args)
+        self.active_profile = name
         self.observe("after-profile-" + name)
 
     def observe(self, phase):
@@ -110,7 +119,7 @@ class Network:
                   ["tc", "-s", "-j", "qdisc", "show", "dev", self.links[side]]).stdout)}
                  for side, counters in enumerate(self.counters())]
         previous = self.observations[-1] if self.observations else None
-        observation = {"phase": phase, "time": time.time(), "nodes": nodes}
+        observation = {"phase": phase, "profile": self.active_profile, "time": time.time(), "nodes": nodes}
         self.observations.append(observation)
         if previous:
             try:
@@ -119,6 +128,8 @@ class Network:
                                               for a, b in zip(previous["nodes"], nodes)]
             except AssertionError as error:
                 raise AssertionError(f"{previous['phase']} -> {phase}: {error}") from error
+        if self.active_profile == "latency" and any(q.get("drops", 0) for node in nodes for q in node["qdisc"]):
+            raise AssertionError(phase + ": the calibrated no-loss queue dropped packets")
 
     def mtu(self, size):
         self.observe("before-mtu-" + str(size))
@@ -131,6 +142,7 @@ class Network:
         for side in range(2):
             command(self.prefix(side) + ["tc", "qdisc", "replace", "dev", self.links[side],
                                         "root", "netem", "loss", "100%"])
+        self.active_profile = "blackhole"
         self.observe("after-blackhole")
 
     def counters(self):
@@ -407,6 +419,60 @@ finally:
         if metric(self.fetch(0, self.cm), "wanopt_tunnel_reconnects_total") != reconnects:
             raise AssertionError("unexpected reconnect during rate step")
         self.record("rate-step-no-udp-errors-or-reconnect", udp_deltas=deltas)
+
+    def queue_overflow_calibration(self):
+        # This negative probe owns different namespaces. Positive-suite counters
+        # remain intact and strict; expected drops cannot hide a transport error.
+        net = Network(True)
+        receiver = None
+        try:
+            net.setup()
+            code = "import signal,socket; s=socket.socket(type=socket.SOCK_DGRAM); s.bind(('10.254.98.2',39009)); print('ready',flush=True); signal.pause()"
+            receiver = subprocess.Popen(net.prefix(1) + [sys.executable, "-c", code],
+                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            readable, _, _ = select.select([receiver.stdout], [], [], 5)
+            if not readable or receiver.stdout.readline().strip() != "ready":
+                raise RuntimeError("negative probe receiver was not ready")
+            command(net.prefix(0) + ["tc", "qdisc", "replace", "dev", net.links[0], "root",
+                                    "netem", "limit", "1", "delay", "50ms"])
+            before = net.counters()
+            sender = """import collections,json,socket
+s=socket.socket(type=socket.SOCK_DGRAM)
+s.setsockopt(socket.IPPROTO_IP,getattr(socket,'IP_RECVERR',11),1)
+errors=collections.Counter()
+for _ in range(1000):
+ try:s.sendto(b'x'*1200,('10.254.98.2',39009))
+ except OSError as e:errors[str(e.errno)]+=1
+s.close();print(json.dumps(dict(errors)))
+"""
+            errors = json.loads(command(net.prefix(0) + [sys.executable, "-c", sender], timeout=5).stdout)
+            time.sleep(.2)
+            after = net.counters()
+            queues = json.loads(command(net.prefix(0) + ["tc", "-s", "-j", "qdisc", "show",
+                                                       "dev", net.links[0]]).stdout)
+            drops = sum(q.get("drops", 0) for q in queues)
+            send_errors = after[0].get("SndbufErrors", 0) - before[0].get("SndbufErrors", 0)
+            self.report["queue_overflow_probe"] = {"expected_fixture_failure": True, "before": before,
+                "after": after, "qdisc": queues, "send_errno_counts": errors,
+                "qdisc_drops": drops, "sndbuf_errors": send_errors}
+            if drops <= 0 or drops != send_errors:
+                raise AssertionError(f"expected matching deliberate queue drops/SndbufErrors, got {drops}/{send_errors}")
+            for first, last in zip(before, after):
+                if any(last.get(k, 0) != first.get(k, 0) for k in ["RcvbufErrors", "InErrors", "InCsumErrors", "MemErrors", "NoPorts"]):
+                    raise AssertionError("unexpected non-queue error in the calibration probe")
+            self.record("expected-queue-overflow-calibration", qdisc_drops=drops, sndbuf_errors=send_errors)
+        finally:
+            if receiver is not None:
+                if receiver.poll() is None:
+                    receiver.terminate()
+                    try:
+                        receiver.wait(timeout=3)
+                    except subprocess.TimeoutExpired:
+                        receiver.kill()
+                        receiver.wait(timeout=3)
+                receiver.stdout.close()
+            net.cleanup()
+            self.report.setdefault("queue_overflow_probe", {})["cleanup_passed"] = True
 
     def reload(self, cfg, rejected=False):
         log = self.root / "server.log"
@@ -696,17 +762,21 @@ finally:
         if not all(f'algorithm="{self.o.cc}"' in m for m in metrics):
             raise AssertionError("actual congestion controller was not observed on both endpoints")
         self.report["final_metrics"] = metrics
-        # Stop the QUIC endpoints before checking counters: later stale test packets
-        # must not be mistaken for a receive failure in an application under test.
-        if before:
-            self.report["udp_deltas"] = [check_udp(a, b, allow_closed_ports=True) for a, b in zip(before, self.net.counters())]
-            self.report["udp_lifecycle_note"] = ("NoPorts is retained across deliberate client stop/key revocation/restarts; "
-                                                  "the initial steady workload requires NoPorts=0. All buffer/input/checksum/memory errors "
-                                                  "remain fatal across the entire suite.")
         for p in [self.client, self.server]:
             self.stop(p)
         self.stop(self.origin, graceful=False)
         self.record("graceful-shutdown" if os.name != "nt" else "process-teardown")
+        self.net.observe("after-owned-endpoint-shutdown")
+        if self.o.netem:
+            self.queue_overflow_calibration()
+            self.net.observe("after-separate-negative-queue-probe")
+            self.report["queue_overflow_probe"]["positive_namespace_critical_errors_unchanged"] = True
+        if before:
+            self.report["udp_deltas"] = [check_udp(a, b, allow_closed_ports=True) for a, b in zip(before, self.net.counters())]
+            self.report["udp_lifecycle_note"] = ("NoPorts is retained across deliberate client stop/key revocation/restarts; "
+                                                  "the initial steady workload requires NoPorts=0. All buffer/input/checksum/memory errors "
+                                                  "remain fatal across the entire positive suite, including shutdown. The deliberate overflow "
+                                                  "probe uses separate namespaces; their expected errors never enter this baseline.")
 
     def cleanup(self):
         for p, log in reversed(self.processes):
