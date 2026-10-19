@@ -312,6 +312,9 @@ func TestHTTPExpectContinueAndEarlyResponse(t *testing.T) {
 					w.WriteHeader(http.StatusExpectationFailed)
 					return
 				}
+				// Exercise multiple informational responses deterministically.
+				w.WriteHeader(http.StatusContinue)
+				w.WriteHeader(http.StatusEarlyHints)
 				b, err := io.ReadAll(r.Body)
 				if err != nil {
 					t.Errorf("origin read: %v", err)
@@ -345,9 +348,30 @@ func TestHTTPExpectContinueAndEarlyResponse(t *testing.T) {
 				t.Fatalf("expected 100 before body, got %d", resp.StatusCode)
 			}
 			io.WriteString(c, "data")
-			resp, err = http.ReadResponse(br, &http.Request{Method: "POST"})
-			if err != nil {
-				t.Fatal(err)
+			// The proxy can emit its own 100 Continue and forward upstream 1xx.
+			// Read all informational responses before checking the final body.
+			sawEarlyHints := false
+			for informational := 0; ; informational++ {
+				if informational == 10 {
+					t.Fatal("too many informational responses before final response")
+				}
+				resp, err = http.ReadResponse(br, &http.Request{Method: "POST"})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if resp.StatusCode < 100 || resp.StatusCode >= 200 || resp.StatusCode == http.StatusSwitchingProtocols {
+					break
+				}
+				if resp.StatusCode == http.StatusEarlyHints {
+					sawEarlyHints = true
+				}
+				resp.Body.Close()
+			}
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("expected final 200, got %d", resp.StatusCode)
+			}
+			if !sawEarlyHints {
+				t.Fatal("upstream 103 Early Hints was not forwarded")
 			}
 			b, err := io.ReadAll(resp.Body)
 			resp.Body.Close()

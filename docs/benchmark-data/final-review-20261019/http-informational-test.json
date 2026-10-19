@@ -1,0 +1,36 @@
+{
+  "scope": "test-only follow-up to PR 2; no infrastructure or runtime changes",
+  "prior_merge": "7f3647bdadd744e8967071309cb4639385d3abc7",
+  "initial_main_ci": {
+    "id": 39187939195,
+    "conclusion": "failure",
+    "failed_job": "test (windows-latest)"
+  },
+  "instrumented_windows": {
+    "toolchain": "go1.27.2",
+    "repeats": 1000,
+    "extra_100_then_final_200_data": 7,
+    "result": "PASS"
+  },
+  "deterministic_old_parser": "FAIL: empty body when reading interim response as final",
+  "fixed": {
+    "windows": {
+      "targeted_repeats": 1000,
+      "proxy_package_repeats": 3,
+      "result": "PASS"
+    },
+    "linux_race": {
+      "targeted_repeats": 1000,
+      "proxy_package_repeats": 3,
+      "result": "PASS"
+    }
+  },
+  "patch": {
+    "sha256": "f4b4fc7f570c51fc3d5c9ae621df20d2ca4627db5c258a356de0fbad5dc52f5a",
+    "previous_sections_byte_identical": 19,
+    "added_sections": [
+      "internal/proxy/proxy_test.go"
+    ]
+  },
+  "public_and_experimental_test_byte_identical": true
+}
