@@ -128,7 +128,7 @@ jobs:
           if [[ '${{ runner.os }}' == Windows ]]; then ext='.exe'; fi
           for target in client server keygen; do go build -trimpath -buildvcs=false -o "validation-bin/wanopt-${target}${ext}" "./cmd/${target}"; done
           go build -trimpath -buildvcs=false -o "validation-bin/wanbench${ext}" ./tools/wanbench
-      - name: Actual binary end-to-end checks
+      - name: Actual binaries, interactive load, strict503 and five restart recoveries
         run: python tools/validation/check.py --bin validation-bin --report binary-e2e.json
       - name: Failure teardown keeps no process or credential directory
         shell: bash

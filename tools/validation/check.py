@@ -89,9 +89,9 @@ class Network:
             command(p + ["tc", "qdisc", "del", "dev", self.links[side], "root"], check=False)
             if name != "native":
                 args = ["tc", "qdisc", "replace", "dev", self.links[side], "root", "netem",
-                        "limit", "10000", "delay", "50ms", "5ms"]
+                        "limit", "10000", "delay", "50ms"]
                 if name != "latency":
-                    args += ["loss"] + (["0.1%", "rate", "100mbit"] if name == "moderate" else ["1%", "rate", "20mbit"])
+                    args += ["5ms", "loss"] + (["0.1%", "rate", "100mbit"] if name == "moderate" else ["1%", "rate", "20mbit"])
                 command(p + args)
 
     def mtu(self, size):
@@ -271,6 +271,101 @@ finally:c.close()
                               "reconnects": metric(text, "wanopt_tunnel_reconnects_total")})
         return snapshots
 
+    def held_lease_overload(self):
+        self.net.profile("latency")
+        self.drain()
+        before = metric(self.fetch(0, self.cm), "wanopt_admission_rejected_total")
+        code = """import http.client,json,socket,sys
+holders=[]
+try:
+ for _ in range(4):
+  c=socket.create_connection(('127.0.0.1',int(sys.argv[1])),timeout=4)
+  holders.append(c)
+  c.sendall(('CONNECT '+sys.argv[2]+' HTTP/1.1\\r\\nHost: '+sys.argv[2]+'\\r\\n\\r\\n').encode())
+  header=b''
+  while b'\\r\\n\\r\\n' not in header:
+   chunk=c.recv(4096)
+   if not chunk or len(header)>8192:raise RuntimeError('CONNECT header incomplete')
+   header+=chunk
+  if header.split(b' ',2)[1]!=b'200':raise RuntimeError('holder was rejected')
+ probe=http.client.HTTPConnection('127.0.0.1',int(sys.argv[1]),timeout=4)
+ try:
+  probe.request('GET',sys.argv[3],headers={'Connection':'close'})
+  response=probe.getresponse();response.read()
+  print(json.dumps({'status':response.status,'held_streams':len(holders)}))
+ finally:probe.close()
+finally:
+ for c in holders:c.close()
+"""
+        result = json.loads(command(self.net.prefix(0) + [sys.executable, "-c", code,
+                                  self.proxy.rsplit(":", 1)[1], self.proxy_target.removeprefix("http://"),
+                                  self.proxy_target + "/ping"], timeout=25).stdout)
+        if result != {"status": 503, "held_streams": 4}:
+            raise AssertionError(f"strict overload result: {result}")
+        after = metric(self.fetch(0, self.cm), "wanopt_admission_rejected_total")
+        if after <= before:
+            raise AssertionError("overload did not increment the admission rejection counter")
+        self.record("held-four-streams-exact-503", expected_http_status=503,
+                    rejection_counter_delta=after-before)
+        self.drain()
+        self.bench("held-overload-recovery", "POST", size=32768)
+
+    def interactive_under_bulk(self):
+        self.net.profile("latency")
+        for direction in ["GET", "POST"]:
+            self.bench("interactive-idle-" + direction, direction, size=1,
+                       extra=["-repeats", "4", "-warm"])
+            self.drain()
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                bulk = pool.submit(self.bench, "interactive-bulk-" + direction, direction,
+                                   "random", True, ["-stream", "-duration", "2s", "-warm"], True, 32768)
+                self.ready(0, self.cm, lambda text: metric(text, "wanopt_admitted_streams") >= 1)
+                if bulk.done():
+                    bulk.result()
+                    raise AssertionError("bulk completed before the interactive request started")
+                self.bench("interactive-loaded-" + direction, direction, size=1,
+                           extra=["-repeats", "8", "-warm"])
+                bulk.result()
+            self.drain()
+
+    def restart_recovery(self):
+        self.net.profile("latency")
+        for repeat in range(5):
+            self.drain()
+            previous = metric(self.fetch(0, self.cm), "wanopt_tunnel_reconnects_total")
+            self.stop(self.server)
+            self.server = self.start(f"server-restart-{repeat}", "wanopt-server",
+                                     ["-config", str(self.root / "server.json")], 1)
+            self.ready(1, self.sm)
+            self.await_proxy_recovery(f"server-restart-{repeat}")
+            for direction in ["GET", "POST"]:
+                self.bench(f"server-restart-{repeat}-{direction}", direction, size=32768)
+            current = metric(self.fetch(0, self.cm), "wanopt_tunnel_reconnects_total")
+            if current <= previous:
+                raise AssertionError("server restart did not cause an observed reconnect")
+            self.record(f"server-restart-{repeat}-same-client", reconnect_delta=current-previous)
+
+    def reduced_rate_after_idle(self):
+        if not self.o.netem:
+            return
+        self.drain()
+        before = self.net.counters()
+        reconnects = metric(self.fetch(0, self.cm), "wanopt_tunnel_reconnects_total")
+        for direction in ["GET", "POST"]:
+            self.net.profile("native")
+            self.bench("rate-step-prime-" + direction, direction,
+                       extra=["-stream", "-duration", "300ms", "-warm"], size=32768)
+            self.drain()
+            time.sleep(2)
+            self.net.profile("severe")
+            self.bench("rate-step-reduced-" + direction, direction, "text",
+                       extra=["-stream", "-duration", "300ms", "-warm"], size=32768)
+            self.drain()
+        deltas = [check_udp(a, b) for a, b in zip(before, self.net.counters())]
+        if metric(self.fetch(0, self.cm), "wanopt_tunnel_reconnects_total") != reconnects:
+            raise AssertionError("unexpected reconnect during rate step")
+        self.record("rate-step-no-udp-errors-or-reconnect", udp_deltas=deltas)
+
     def reload(self, cfg, rejected=False):
         log = self.root / "server.log"
         message = "credential reload rejected" if rejected else "credentials reloaded"
@@ -444,7 +539,7 @@ finally:c.close()
                           congestion_control=self.o.cc, proxy_idle_timeout_sec=10 if self.o.netem else 1,
                           max_active_streams=4, max_compressed_streams=1,
                           request_timeout_sec=2, handshake_timeout_sec=2)
-        profiles = ["native", "moderate", "severe"] if self.o.netem else ["native"]
+        profiles = ["native", "latency", "moderate", "severe"] if self.o.netem else ["native"]
         for compressed in [False, True]:
             client_cfg["compression"] = compressed
             self.client = self.start("client-" + str(compressed), "wanopt-client",
@@ -501,6 +596,10 @@ finally:c.close()
                          for proxy in [False, True]]
                 for task in tasks:
                     task.result()
+        self.interactive_under_bulk()
+        self.held_lease_overload()
+        self.reduced_rate_after_idle()
+        self.restart_recovery()
         if self.o.netem:
             # The earlier one-second idle policy intentionally cannot survive a
             # two-second outage. Require its rejection and subsequent recovery.

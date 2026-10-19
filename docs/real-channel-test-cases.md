@@ -26,3 +26,5 @@ This is the separate real-channel register for [the complete test plan](test-pla
 ## Execution ledger
 
 Results and raw-case IDs will be appended here and in the release acceptance report. A planned/deferred case is never counted as passed. No production interface, queue, retention, container, monitoring or VPN configuration is part of this lab.
+
+The first full matrix attempt ran four client copies in one128MiB group and hit a lab memcg OOM after104 successful transfers. Cleanup and independent continuity audit passed. The full repeat uses one active matrix client mode at a time, a fresh client/QUIC connection for each invocation and a finite1MiB warmup, within the unchanged128MiB aggregate budget. Mixed cycles retain one persistent client and add a second only during explicit overload. Record all planned transitions; retain NoPorts from deliberate socket replacement separately from critical UDP buffer/input/checksum/memory errors. Do not reuse partial failed data as a successful final matrix.
