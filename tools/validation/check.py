@@ -350,17 +350,19 @@ finally:
             self.bench("interactive-idle-" + direction, direction, size=1,
                        extra=["-repeats", "4", "-warm"])
             self.drain()
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                bulk = pool.submit(self.bench, "interactive-bulk-" + direction, direction,
-                                   "random", True, ["-stream", "-duration", "2s", "-warm"], True, 32768)
-                self.ready(0, self.cm, lambda text: metric(text, "wanopt_admitted_streams") >= 1)
-                if bulk.done():
+            for repeat in range(self.o.network_stress_repeats):
+                label = direction + f"-r{repeat}"
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    bulk = pool.submit(self.bench, "interactive-bulk-" + label, direction,
+                                       "random", True, ["-stream", "-duration", "2s", "-warm"], True, 32768)
+                    self.ready(0, self.cm, lambda text: metric(text, "wanopt_admitted_streams") >= 1)
+                    if bulk.done():
+                        bulk.result()
+                        raise AssertionError("bulk completed before the interactive request started")
+                    self.bench("interactive-loaded-" + label, direction, size=1,
+                               extra=["-repeats", "8", "-warm"])
                     bulk.result()
-                    raise AssertionError("bulk completed before the interactive request started")
-                self.bench("interactive-loaded-" + direction, direction, size=1,
-                           extra=["-repeats", "8", "-warm"])
-                bulk.result()
-            self.drain()
+                self.drain()
 
     def restart_recovery(self):
         self.net.profile("latency")
@@ -389,16 +391,18 @@ finally:
         self.drain()
         before = self.net.counters()
         reconnects = metric(self.fetch(0, self.cm), "wanopt_tunnel_reconnects_total")
-        for direction in ["GET", "POST"]:
-            self.net.profile("native")
-            self.bench("rate-step-prime-" + direction, direction,
-                       extra=["-stream", "-duration", "300ms", "-warm"], size=32768)
-            self.drain()
-            time.sleep(2)
-            self.net.profile("severe")
-            self.bench("rate-step-reduced-" + direction, direction, "text",
-                       extra=["-stream", "-duration", "300ms", "-warm"], size=32768)
-            self.drain()
+        for repeat in range(self.o.network_stress_repeats):
+            for direction in ["GET", "POST"]:
+                label = direction + f"-r{repeat}"
+                self.net.profile("native")
+                self.bench("rate-step-prime-" + label, direction,
+                           extra=["-stream", "-duration", "300ms", "-warm"], size=32768)
+                self.drain()
+                time.sleep(2)
+                self.net.profile("severe")
+                self.bench("rate-step-reduced-" + label, direction, "text",
+                           extra=["-stream", "-duration", "300ms", "-warm"], size=32768)
+                self.drain()
         deltas = [check_udp(a, b) for a, b in zip(before, self.net.counters())]
         if metric(self.fetch(0, self.cm), "wanopt_tunnel_reconnects_total") != reconnects:
             raise AssertionError("unexpected reconnect during rate step")
@@ -727,6 +731,8 @@ def main():
     parser.add_argument("--cc", choices=["reno", "bbr"], default="reno")
     parser.add_argument("--netem", action="store_true")
     parser.add_argument("--fail-after-ready", action="store_true", help="exercise failure teardown, expects nonzero exit")
+    parser.add_argument("--network-stress-repeats", type=int, choices=range(1, 6), default=1,
+                        help="bounded repetitions of same-connection interactive and rate-step scenarios")
     parser.add_argument("--report", type=Path, required=True)
     args = parser.parse_args()
     args.report.parent.mkdir(parents=True, exist_ok=True)
