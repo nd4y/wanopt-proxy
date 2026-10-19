@@ -1,0 +1,77 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'New version, e.g. v0.2.0 (draft until real-channel acceptance)'
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  draft:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      actions: read
+    env:
+      VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+      - name: Require exact successful main CI and a new version
+        run: |
+          [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          count=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?branch=main&event=push&per_page=20" --jq "[.workflow_runs[] | select(.head_sha == \"$GITHUB_SHA\" and .conclusion == \"success\")] | length")
+          [[ "$count" -gt 0 ]] || { echo 'Successful CI for this exact main commit is required' >&2; exit 1; }
+          ! git show-ref --verify --quiet "refs/tags/$VERSION" || { echo 'Tag already exists' >&2; exit 1; }
+          if gh release view "$VERSION" >/dev/null 2>&1; then echo 'Release already exists' >&2; exit 1; fi
+      - name: Build, compare, test and package release assets
+        run: bash scripts/build-release.sh "$VERSION" "${RUNNER_TEMP}/release-assets"
+      - name: Create draft with verified assets
+        run: |
+          printf '%s\n' 'Protocol v2: upgrade both endpoints together.' 'Default QUIC controller: Reno. BBR is an experimental opt-in in its separate archive.' 'See manifest.json and SHA256SUMS for exact source, patch and binary provenance.' 'Real-channel acceptance is pending; keep this release as a draft.' > "${RUNNER_TEMP}/release-notes.md"
+          gh release create "$VERSION" --draft --target "$GITHUB_SHA" --title "wanopt $VERSION" --notes-file "${RUNNER_TEMP}/release-notes.md"
+          gh release upload "$VERSION" "${RUNNER_TEMP}/release-assets/"*
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: always()
+        with:
+          name: release-assets
+          path: ${{ runner.temp }}/release-assets/
+          retention-days: 14
+  windows-asset:
+    needs: draft
+    runs-on: windows-latest
+    timeout-minutes: 10
+    env:
+      VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Verify and execute the exact Windows release archive
+        shell: pwsh
+        run: |
+          gh release download $env:VERSION --dir release-assets
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/validation/verify_assets.py --dir release-assets --source $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Expand-Archive -LiteralPath "release-assets/wanopt-$env:VERSION-windows-amd64.zip" -DestinationPath release-bin
+          python tools/validation/check.py --bin release-bin --report windows-release-check.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: always()
+        with:
+          name: windows-release-check
+          path: windows-release-check.json
+          retention-days: 14
