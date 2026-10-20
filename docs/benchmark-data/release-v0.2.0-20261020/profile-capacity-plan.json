@@ -1,0 +1,12 @@
+{
+  "capacities_mbps": {
+    "native": 50,
+    "latency": 50,
+    "moderate": 50,
+    "severe": 20
+  },
+  "native_retains_physical_RTT": true,
+  "strict_physical_allowance_drop_error_guard": true,
+  "previous_uncapped_cohort": "history-diagnostic-20261020",
+  "original_timeout_cause_not_proven": true
+}

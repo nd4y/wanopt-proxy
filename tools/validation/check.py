@@ -14,17 +14,29 @@ import json
 import os
 from pathlib import Path
 import secrets
+import select
 import signal
 import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.request
 
 
-def command(args, timeout=30, check=True):
-    p = subprocess.run(list(map(str, args)), capture_output=True, text=True, timeout=timeout)
+PROBE_RECEIVER_CODE = """import socket,sys
+s=socket.socket(type=socket.SOCK_DGRAM)
+s.bind((sys.argv[1],int(sys.argv[2])))
+print('ready',flush=True)
+while True:
+ data,_=s.recvfrom(2048)
+ if data==b'warm':print('warm-delivered',flush=True)
+"""
+
+
+def command(args, timeout=30, check=True, env=None):
+    p = subprocess.run(list(map(str, args)), capture_output=True, text=True, timeout=timeout, env=env)
     if check and p.returncode:
         raise RuntimeError(f"{Path(str(args[0])).name} exited {p.returncode}: {p.stderr[-1000:]}")
     return p
@@ -58,6 +70,9 @@ class Network:
         self.names = ["wvc" + suffix, "wvs" + suffix]
         self.links = ["wvcv" + suffix, "wvsv" + suffix]
         self.created = []
+        self.observations = []
+        self.observation_lock = threading.Lock()
+        self.active_profile = None
 
     def prefix(self, side):
         return ["ip", "netns", "exec", self.names[side]] if self.enabled else []
@@ -66,7 +81,7 @@ class Network:
     def address(self):
         return "10.254.98.2" if self.enabled else "127.0.0.1"
 
-    def setup(self):
+    def setup(self, tune_offloads=True):
         if not self.enabled:
             return
         if os.geteuid() != 0:
@@ -81,27 +96,64 @@ class Network:
             command(p + ["ip", "addr", "add", f"10.254.98.{side + 1}/30", "dev", self.links[side]])
             command(p + ["ip", "link", "set", self.links[side], "up"])
             command(p + ["ip", "link", "set", "lo", "up"])
-            command(p + ["ethtool", "-K", self.links[side], "gro", "off", "gso", "off", "tso", "off"])
+            if tune_offloads:
+                command(p + ["ethtool", "-K", self.links[side], "gro", "off", "gso", "off", "tso", "off"])
 
     def profile(self, name):
+        self.observe("before-profile-" + name)
         for side in range(2) if self.enabled else []:
             p = self.prefix(side)
             command(p + ["tc", "qdisc", "del", "dev", self.links[side], "root"], check=False)
+            args = ["tc", "qdisc", "replace", "dev", self.links[side], "root", "netem", "limit", "10000"]
             if name != "native":
-                args = ["tc", "qdisc", "replace", "dev", self.links[side], "root", "netem",
-                        "limit", "10000", "delay", "50ms", "5ms"]
-                if name != "latency":
-                    args += ["loss"] + (["0.1%", "rate", "100mbit"] if name == "moderate" else ["1%", "rate", "20mbit"])
-                command(p + args)
+                args += ["delay", "50ms"]
+            if name in ["moderate", "severe"]:
+                args += ["5ms", "loss"] + (["0.1%", "rate", "100mbit"] if name == "moderate" else ["1%", "rate", "20mbit"])
+            else:
+                # Both no-loss controls have a defined capacity. Native keeps
+                # the actual RTT; latency adds100ms. A real host/provider limit
+                # or finite unbounded-delay queue is not requested packet loss.
+                args += ["rate", "100mbit"]
+            command(p + args)
+        self.active_profile = name
+        self.observe("after-profile-" + name)
+
+    def observe(self, phase):
+        if not self.enabled:
+            return
+        with self.observation_lock:
+            self.observe_locked(phase)
+
+    def observe_locked(self, phase):
+        nodes = [{"udp": counters, "qdisc": json.loads(command(self.prefix(side) +
+                  ["tc", "-s", "-j", "qdisc", "show", "dev", self.links[side]]).stdout)}
+                 for side, counters in enumerate(self.counters())]
+        previous = self.observations[-1] if self.observations else None
+        observation = {"phase": phase, "profile": self.active_profile, "time": time.time(), "nodes": nodes}
+        self.observations.append(observation)
+        if previous:
+            try:
+                # Planned socket closes can cause NoPorts; never exempt buffers.
+                observation["udp_deltas"] = [check_udp(a["udp"], b["udp"], allow_closed_ports=True)
+                                              for a, b in zip(previous["nodes"], nodes)]
+            except AssertionError as error:
+                raise AssertionError(f"{previous['phase']} -> {phase}: {error}") from error
+        if self.active_profile in ["native", "latency"] and any(q.get("drops", 0) for node in nodes for q in node["qdisc"]):
+            raise AssertionError(phase + ": the calibrated no-loss queue dropped packets")
 
     def mtu(self, size):
+        self.observe("before-mtu-" + str(size))
         for side in range(2):
             command(self.prefix(side) + ["ip", "link", "set", self.links[side], "mtu", str(size)])
+        self.observe("after-mtu-" + str(size))
 
     def blackhole(self):
+        self.observe("before-blackhole")
         for side in range(2):
             command(self.prefix(side) + ["tc", "qdisc", "replace", "dev", self.links[side],
                                         "root", "netem", "loss", "100%"])
+        self.active_profile = "blackhole"
+        self.observe("after-blackhole")
 
     def counters(self):
         if not self.enabled:
@@ -128,7 +180,9 @@ class Suite:
         self.o, self.root = options, Path(runtime)
         self.net = Network(options.netem)
         self.processes = []
-        self.report = {"controller": options.cc, "netem": options.netem, "cases": [], "measurements": []}
+        self.report = {"controller": options.cc, "netem": options.netem,
+                       "gomaxprocs": getattr(options, "gomaxprocs", 2), "cases": [], "measurements": []}
+        self.report["network_observations"] = self.net.observations
         self.suffix = ".exe" if os.name == "nt" else ""
         self.client = None
 
@@ -144,7 +198,7 @@ class Suite:
 
     def start(self, name, binary, args, side):
         log = open(self.root / (name + ".log"), "w+")
-        env = dict(os.environ, GOMAXPROCS="2", GOMEMLIMIT="64MiB")
+        env = dict(os.environ, GOMAXPROCS=str(self.report["gomaxprocs"]), GOMEMLIMIT="64MiB")
         if self.o.netem:
             env["QUIC_GO_DISABLE_GSO"] = "1"
         try:
@@ -170,6 +224,37 @@ class Suite:
             raise RuntimeError("process did not stop within deadline")
         if graceful and os.name != "nt" and code != 0:
             raise RuntimeError(f"SIGTERM exit code {code}")
+
+    def capture_failure(self):
+        # A failed positive request must keep the blocked workers' evidence;
+        # normal teardown would destroy it. Only these owned child PIDs qualify.
+        live = [(name, p) for name in ["client", "server"]
+                if (p := getattr(self, name, None)) is not None and p.poll() is None]
+        if not live:
+            return
+        evidence = {"time": time.time(), "metrics": {}, "processes": []}
+        self.report["failure_diagnostics"] = evidence
+        for side, name in [(0, "cm"), (1, "sm")]:
+            try:
+                evidence["metrics"][name] = self.fetch(side, getattr(self, name))
+            except Exception as error:
+                evidence["metrics"][name] = {"error": str(error)}
+        for name, p in live:
+            item = {"name": name, "pid": p.pid}
+            evidence["processes"].append(item)
+            if os.name != "nt":
+                try:
+                    p.send_signal(signal.SIGQUIT)
+                    p.wait(timeout=5)
+                    item["stack_signal"] = "SIGQUIT"
+                except (OSError, subprocess.TimeoutExpired) as error:
+                    item["error"] = str(error)
+        # Logs are copied into the report before TemporaryDirectory is removed.
+        evidence["logs"] = {}
+        for path in self.root.glob("*.log"):
+            with path.open("rb") as log:
+                log.seek(max(0, path.stat().st_size - 512000))
+                evidence["logs"][path.name] = log.read(512000).decode(errors="replace")
 
     def config(self, name, cfg):
         p = self.root / (name + ".json")
@@ -199,13 +284,15 @@ class Suite:
         raise RuntimeError("readiness or lease drain timed out")
 
     def bench(self, name, direction, kind="random", proxy=True, extra=(), success=True, size=262144):
+        self.net.observe("before-bench-" + name)
         args = [self.binary("wanbench"), "-url", self.proxy_target if proxy else self.direct,
                 "-kind", kind, "-bytes", str(size), "-direction", direction,
                 "-request-timeout", "120s" if self.o.netem else "20s", "-label", name]
         if proxy:
             args += ["-proxy", self.proxy]
         args += list(extra)
-        p = command(self.net.prefix(0) + args, timeout=145 if self.o.netem else 45, check=False)
+        p = command(self.net.prefix(0) + args, timeout=145 if self.o.netem else 45, check=False,
+                    env=dict(os.environ, GOMAXPROCS=str(self.report["gomaxprocs"]), GOMEMLIMIT="64MiB"))
         try:
             result = json.loads(p.stdout)
         except json.JSONDecodeError:
@@ -213,6 +300,7 @@ class Suite:
         ok = result.get("integrity") is True and p.returncode == 0
         self.report["measurements"].append({"case": name, "expected_success": success,
                                              "exit": p.returncode, "result": result})
+        self.net.observe("after-bench-" + name)
         if ok != success:
             self.report["cases"].append({"name": name, "passed": False})
             raise AssertionError(f"{name}: unexpected benchmark outcome: {result}")
@@ -230,7 +318,7 @@ class Suite:
             raise AssertionError(f"{name}: expected gateway rejection 502, got {status}")
         self.record(name, expected_http_status=502)
 
-    def await_proxy_recovery(self, name):
+    def await_proxy_recovery(self, name, timeout=20):
         # A deliberately expired request can leave a closing pooled upstream
         # connection. Recovery is eventual and bounded; retain every attempt.
         code = """import http.client,json,sys
@@ -241,7 +329,7 @@ try:
 except Exception as e:print(json.dumps({'error':type(e).__name__}))
 finally:c.close()
 """
-        end = time.monotonic() + 20
+        end = time.monotonic() + timeout
         attempts = 0
         while time.monotonic() < end:
             if self.client.poll() is not None:
@@ -255,11 +343,12 @@ finally:c.close()
             except (RuntimeError, subprocess.TimeoutExpired) as error:
                 result = {"error": type(error).__name__}
             attempts += 1
-            self.report.setdefault("recovery_attempts", []).append({"case": name, "attempt": attempts, **result})
+            self.report.setdefault("recovery_attempts", []).append({"case": name, "attempt": attempts,
+                                                                    "deadline_seconds": timeout, **result})
             if result.get("status") == 200 and result.get("body") == "ok":
                 return
             time.sleep(min(.2, max(0, end - time.monotonic())))
-        raise RuntimeError(name + ": recovery did not become available within 20 seconds")
+        raise RuntimeError(name + f": recovery did not become available within {timeout} seconds")
 
     def drain(self):
         snapshots = []
@@ -270,6 +359,194 @@ finally:c.close()
                               "codecs": metric(text, "wanopt_admitted_codecs"),
                               "reconnects": metric(text, "wanopt_tunnel_reconnects_total")})
         return snapshots
+
+    def held_lease_overload(self):
+        self.net.profile("latency")
+        self.drain()
+        before = metric(self.fetch(0, self.cm), "wanopt_admission_rejected_total")
+        code = """import http.client,json,socket,sys
+holders=[]
+try:
+ for _ in range(4):
+  c=socket.create_connection(('127.0.0.1',int(sys.argv[1])),timeout=4)
+  holders.append(c)
+  c.sendall(('CONNECT '+sys.argv[2]+' HTTP/1.1\\r\\nHost: '+sys.argv[2]+'\\r\\n\\r\\n').encode())
+  header=b''
+  while b'\\r\\n\\r\\n' not in header:
+   chunk=c.recv(4096)
+   if not chunk or len(header)>8192:raise RuntimeError('CONNECT header incomplete')
+   header+=chunk
+  if header.split(b' ',2)[1]!=b'200':raise RuntimeError('holder was rejected')
+ probe=http.client.HTTPConnection('127.0.0.1',int(sys.argv[1]),timeout=4)
+ try:
+  probe.request('GET',sys.argv[3],headers={'Connection':'close'})
+  response=probe.getresponse();response.read()
+  print(json.dumps({'status':response.status,'held_streams':len(holders)}))
+ finally:probe.close()
+finally:
+ for c in holders:c.close()
+"""
+        result = json.loads(command(self.net.prefix(0) + [sys.executable, "-c", code,
+                                  self.proxy.rsplit(":", 1)[1], self.proxy_target.removeprefix("http://"),
+                                  self.proxy_target + "/ping"], timeout=25).stdout)
+        if result != {"status": 503, "held_streams": 4}:
+            raise AssertionError(f"strict overload result: {result}")
+        after = metric(self.fetch(0, self.cm), "wanopt_admission_rejected_total")
+        if after <= before:
+            raise AssertionError("overload did not increment the admission rejection counter")
+        self.record("held-four-streams-exact-503", expected_http_status=503,
+                    rejection_counter_delta=after-before)
+        self.drain()
+        self.bench("held-overload-recovery", "POST", size=32768)
+
+    def interactive_under_bulk(self):
+        self.net.profile("latency")
+        for direction in ["GET", "POST"]:
+            self.bench("interactive-idle-" + direction, direction, size=1,
+                       extra=["-repeats", "4", "-warm"])
+            self.drain()
+            for repeat in range(self.o.network_stress_repeats):
+                label = direction + f"-r{repeat}"
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    bulk = pool.submit(self.bench, "interactive-bulk-" + label, direction,
+                                       "random", True, ["-stream", "-duration", "2s", "-warm"], True, 32768)
+                    self.ready(0, self.cm, lambda text: metric(text, "wanopt_admitted_streams") >= 1)
+                    if bulk.done():
+                        bulk.result()
+                        raise AssertionError("bulk completed before the interactive request started")
+                    self.bench("interactive-loaded-" + label, direction, size=1,
+                               extra=["-repeats", "8", "-warm"])
+                    bulk.result()
+                self.drain()
+
+    def restart_recovery(self):
+        self.net.profile("latency")
+        for repeat in range(5):
+            self.drain()
+            previous = metric(self.fetch(0, self.cm), "wanopt_tunnel_reconnects_total")
+            self.stop(self.server)
+            self.server = self.start(f"server-restart-{repeat}", "wanopt-server",
+                                     ["-config", str(self.root / "server.json")], 1)
+            self.ready(1, self.sm)
+            # Windows terminate() is a crash, not Unix SIGTERM: no QUIC close
+            # reaches the client. Default heartbeat detection can take10s+15s
+            # before reconnect, so a20s bound would contradict that policy.
+            deadline = 40 if os.name == "nt" else 20
+            self.await_proxy_recovery(f"server-restart-{repeat}", timeout=deadline)
+            for direction in ["GET", "POST"]:
+                self.bench(f"server-restart-{repeat}-{direction}", direction, size=32768)
+            current = metric(self.fetch(0, self.cm), "wanopt_tunnel_reconnects_total")
+            if current <= previous:
+                raise AssertionError("server restart did not cause an observed reconnect")
+            self.record(f"server-restart-{repeat}-same-client", reconnect_delta=current-previous)
+
+    def reduced_rate_after_idle(self):
+        if not self.o.netem:
+            return
+        self.drain()
+        before = self.net.counters()
+        reconnects = metric(self.fetch(0, self.cm), "wanopt_tunnel_reconnects_total")
+        for repeat in range(self.o.network_stress_repeats):
+            for direction in ["GET", "POST"]:
+                label = direction + f"-r{repeat}"
+                self.net.profile("native")
+                self.bench("rate-step-prime-" + label, direction,
+                           extra=["-stream", "-duration", "300ms", "-warm"], size=32768)
+                self.drain()
+                time.sleep(2)
+                self.net.profile("severe")
+                self.bench("rate-step-reduced-" + label, direction, "text",
+                           extra=["-stream", "-duration", "300ms", "-warm"], size=32768)
+                self.drain()
+        deltas = [check_udp(a, b) for a, b in zip(before, self.net.counters())]
+        if metric(self.fetch(0, self.cm), "wanopt_tunnel_reconnects_total") != reconnects:
+            raise AssertionError("unexpected reconnect during rate step")
+        self.record("rate-step-no-udp-errors-or-reconnect", udp_deltas=deltas)
+
+    def queue_overflow_calibration(self):
+        # This negative probe owns different namespaces. Positive-suite counters
+        # remain intact and strict; expected drops cannot hide a transport error.
+        net = Network(True)
+        receiver = None
+        try:
+            # Small ordinary UDP datagrams do not use segmentation offload.
+            net.setup(tune_offloads=False)
+            receiver = subprocess.Popen(net.prefix(1) + [sys.executable, "-u", "-c", PROBE_RECEIVER_CODE,
+                                                         net.address, "39009"],
+                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            readable, _, _ = select.select([receiver.stdout], [], [], 5)
+            if not readable or receiver.stdout.readline().strip() != "ready":
+                raise RuntimeError("negative probe receiver was not ready")
+            # Resolve the neighbour before installing the tiny queue. Otherwise
+            # ARP can defer UDP transmission: later asynchronous queue drops do
+            # not propagate through the sendmsg path whose counter we calibrate.
+            warm = "import socket; s=socket.socket(type=socket.SOCK_DGRAM); s.sendto(b'warm',('10.254.98.2',39009)); s.close()"
+            command(net.prefix(0) + [sys.executable, "-c", warm], timeout=5)
+            readable, _, _ = select.select([receiver.stdout], [], [], 3)
+            if not readable or receiver.stdout.readline().strip() != "warm-delivered":
+                raise RuntimeError("negative probe neighbour warmup did not deliver")
+            # qdisc drop counters include every Ethernet protocol. A link-local
+            # control packet can share an all-protocol tiny queue but never
+            # increment UDP SndbufErrors. Classify only IPv4 UDP into this probe;
+            # leave ARP/IPv6 in a different band instead of relaxing equality.
+            command(net.prefix(0) + ["tc", "qdisc", "replace", "dev", net.links[0], "root",
+                                    "handle", "1:", "prio", "bands", "3", "priomap"] + ["2"] * 16)
+            command(net.prefix(0) + ["tc", "qdisc", "add", "dev", net.links[0], "parent", "1:1",
+                                    "handle", "10:", "netem", "limit", "1", "delay", "50ms"])
+            command(net.prefix(0) + ["tc", "filter", "add", "dev", net.links[0], "parent", "1:",
+                                    "protocol", "ip", "priority", "1", "u32", "match", "ip", "protocol",
+                                    "17", "0xff", "flowid", "1:1"])
+            before = net.counters()
+            if before[1].get("InDatagrams", 0) < 1:
+                raise RuntimeError("negative probe warmup was not consumed")
+            sender = """import collections,json,socket
+s=socket.socket(type=socket.SOCK_DGRAM)
+errors=collections.Counter()
+for _ in range(1000):
+ try:s.sendto(b'x'*1200,('10.254.98.2',39009))
+ except OSError as e:errors[str(e.errno)]+=1
+s.close();print(json.dumps(dict(errors)))
+"""
+            errors = json.loads(command(net.prefix(0) + [sys.executable, "-c", sender], timeout=5).stdout)
+            time.sleep(.2)
+            after = net.counters()
+            queues = json.loads(command(net.prefix(0) + ["tc", "-s", "-j", "qdisc", "show",
+                                                       "dev", net.links[0]]).stdout)
+            probe_queues = [q for q in queues if q["kind"] == "netem" and q["handle"] == "10:"]
+            if len(probe_queues) != 1:
+                raise AssertionError("IPv4 UDP calibration queue missing or ambiguous")
+            drops = probe_queues[0].get("drops", 0)
+            send_errors = after[0].get("SndbufErrors", 0) - before[0].get("SndbufErrors", 0)
+            self.report["queue_overflow_probe"] = {"expected_fixture_failure": True, "before": before,
+                "after": after, "qdisc": queues, "send_errno_counts": errors,
+                "neighbour_warmed_and_delivery_checked": True, "ip_recverr": False,
+                "qdisc_drops": drops, "sndbuf_errors": send_errors,
+                "queue_protocol": "IPv4 UDP only; ARP/IPv6 use a different prio band"}
+            # Some tc builds do not emit valid JSON for prio class diagnostics.
+            # Preserve this supplementary output as text; the measured netem
+            # counters above remain structured and the exact equality is strict.
+            self.report["queue_overflow_probe"]["classes_text"] = command(net.prefix(0) +
+                ["tc", "-s", "class", "show", "dev", net.links[0]]).stdout
+            self.report["queue_overflow_probe"]["filters_text"] = command(net.prefix(0) +
+                ["tc", "-s", "filter", "show", "dev", net.links[0], "parent", "1:"]).stdout
+            if drops <= 0 or drops != send_errors:
+                raise AssertionError(f"expected matching deliberate queue drops/SndbufErrors, got {drops}/{send_errors}")
+            for first, last in zip(before, after):
+                if any(last.get(k, 0) != first.get(k, 0) for k in ["RcvbufErrors", "InErrors", "InCsumErrors", "MemErrors", "NoPorts"]):
+                    raise AssertionError("unexpected non-queue error in the calibration probe")
+            self.record("expected-queue-overflow-calibration", qdisc_drops=drops, sndbuf_errors=send_errors)
+        finally:
+            if receiver is not None:
+                if receiver.poll() is None:
+                    receiver.terminate()
+                    try:
+                        receiver.wait(timeout=3)
+                    except subprocess.TimeoutExpired:
+                        receiver.kill()
+                        receiver.wait(timeout=3)
+                receiver.stdout.close()
+            net.cleanup()
+            self.report.setdefault("queue_overflow_probe", {})["cleanup_passed"] = True
 
     def reload(self, cfg, rejected=False):
         log = self.root / "server.log"
@@ -427,6 +704,7 @@ finally:c.close()
             raise AssertionError("keygen overwrote an existing private key")
         self.record("keygen-never-overwrites")
         self.net.setup()
+        self.net.observe("initial")
         self.server = self.origin = None
         before = self.net.counters()
         origin_address = "0.0.0.0" if self.o.netem else "127.0.0.1"
@@ -444,7 +722,7 @@ finally:c.close()
                           congestion_control=self.o.cc, proxy_idle_timeout_sec=10 if self.o.netem else 1,
                           max_active_streams=4, max_compressed_streams=1,
                           request_timeout_sec=2, handshake_timeout_sec=2)
-        profiles = ["native", "moderate", "severe"] if self.o.netem else ["native"]
+        profiles = ["native", "latency", "moderate", "severe"] if self.o.netem else ["native"]
         for compressed in [False, True]:
             client_cfg["compression"] = compressed
             self.client = self.start("client-" + str(compressed), "wanopt-client",
@@ -461,6 +739,19 @@ finally:c.close()
                         for proxy in [False, True]:
                             self.bench(label + ("-proxy" if proxy else "-tcp"), direction, kind, proxy,
                                        ["-warm", "-repeats", "2"])
+                if self.o.netem and compressed and profile in ["moderate", "severe"]:
+                    # Short finite/300ms probes do not cover a sustained random
+                    # response and its final HTTP chunk/trailers after loss.
+                    # Keep complete generation+drain time and the strict UDP gate.
+                    for repeat in range(self.o.network_stress_repeats):
+                        for direction in ["GET", "POST"]:
+                            self.stop(self.client)
+                            name = f"client-long-tail-{profile}-{direction}-r{repeat}"
+                            self.client = self.start(name, "wanopt-client",
+                                                     ["-config", self.config(name, client_cfg)], 0)
+                            self.ready(0, self.cm, lambda t: metric(t, "wanopt_tunnel_connections") >= 1)
+                            self.bench(f"long-random-tail-{profile}-{direction}-r{repeat}", direction,
+                                       extra=["-stream", "-duration", "8s", "-warm"], size=1048576)
             self.bench(f"abort-recovery-{compressed}", "GET", extra=["-abort-after", "1024", "-warm"])
             for direction in ["GET", "POST"]:
                 self.bench(f"stream-{compressed}-{direction}", direction,
@@ -501,6 +792,10 @@ finally:c.close()
                          for proxy in [False, True]]
                 for task in tasks:
                     task.result()
+        self.interactive_under_bulk()
+        self.held_lease_overload()
+        self.reduced_rate_after_idle()
+        self.restart_recovery()
         if self.o.netem:
             # The earlier one-second idle policy intentionally cannot survive a
             # two-second outage. Require its rejection and subsequent recovery.
@@ -551,20 +846,28 @@ finally:c.close()
             self.net.mtu(1500)
         self.record("final-lease-drain", snapshots=self.drain())
         metrics = [self.fetch(0, self.cm), self.fetch(1, self.sm)]
+        observed_procs = [metric(text, "go_sched_gomaxprocs_threads") for text in metrics]
+        self.report["observed_gomaxprocs"] = observed_procs
+        if observed_procs != [self.report["gomaxprocs"]] * 2:
+            raise AssertionError(f"actual Go scheduler parallelism differs from configuration: {observed_procs}")
         if not all(f'algorithm="{self.o.cc}"' in m for m in metrics):
             raise AssertionError("actual congestion controller was not observed on both endpoints")
         self.report["final_metrics"] = metrics
-        # Stop the QUIC endpoints before checking counters: later stale test packets
-        # must not be mistaken for a receive failure in an application under test.
-        if before:
-            self.report["udp_deltas"] = [check_udp(a, b, allow_closed_ports=True) for a, b in zip(before, self.net.counters())]
-            self.report["udp_lifecycle_note"] = ("NoPorts is retained across deliberate client stop/key revocation/restarts; "
-                                                  "the initial steady workload requires NoPorts=0. All buffer/input/checksum/memory errors "
-                                                  "remain fatal across the entire suite.")
         for p in [self.client, self.server]:
             self.stop(p)
         self.stop(self.origin, graceful=False)
         self.record("graceful-shutdown" if os.name != "nt" else "process-teardown")
+        self.net.observe("after-owned-endpoint-shutdown")
+        if self.o.netem:
+            self.queue_overflow_calibration()
+            self.net.observe("after-separate-negative-queue-probe")
+            self.report["queue_overflow_probe"]["positive_namespace_critical_errors_unchanged"] = True
+        if before:
+            self.report["udp_deltas"] = [check_udp(a, b, allow_closed_ports=True) for a, b in zip(before, self.net.counters())]
+            self.report["udp_lifecycle_note"] = ("NoPorts is retained across deliberate client stop/key revocation/restarts; "
+                                                  "the initial steady workload requires NoPorts=0. All buffer/input/checksum/memory errors "
+                                                  "remain fatal across the entire positive suite, including shutdown. The deliberate overflow "
+                                                  "probe uses separate namespaces; their expected errors never enter this baseline.")
 
     def cleanup(self):
         for p, log in reversed(self.processes):
@@ -588,7 +891,11 @@ def main():
     parser.add_argument("--bin", type=Path, required=True)
     parser.add_argument("--cc", choices=["reno", "bbr"], default="reno")
     parser.add_argument("--netem", action="store_true")
+    parser.add_argument("--gomaxprocs", type=int, choices=[1, 2], default=2,
+                        help="Go scheduler parallelism for owned endpoints and benchmark processes")
     parser.add_argument("--fail-after-ready", action="store_true", help="exercise failure teardown, expects nonzero exit")
+    parser.add_argument("--network-stress-repeats", type=int, choices=range(1, 6), default=1,
+                        help="bounded repetitions of same-connection interactive and rate-step scenarios")
     parser.add_argument("--report", type=Path, required=True)
     args = parser.parse_args()
     args.report.parent.mkdir(parents=True, exist_ok=True)
@@ -605,6 +912,10 @@ def main():
             except BaseException as error:
                 suite.report["passed"] = False
                 suite.report["error"] = str(error)
+                try:
+                    suite.capture_failure()
+                except Exception as diagnostic_error:
+                    suite.report["failure_diagnostic_error"] = str(diagnostic_error)
                 raise
             finally:
                 try:

@@ -97,7 +97,7 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends iproute2 ethtool
       - name: Actual BBR binaries and isolated impaired links
         # Only the disposable hosted runner is changed.
-        run: sudo python3 tools/validation/check.py --bin "${RUNNER_TEMP}/wanopt-bbr-bin" --cc bbr --netem --report "${GITHUB_WORKSPACE}/bbr-e2e.json"
+        run: sudo python3 tools/validation/check.py --bin "${RUNNER_TEMP}/wanopt-bbr-bin" --cc bbr --netem --gomaxprocs 1 --network-stress-repeats 3 --report "${GITHUB_WORKSPACE}/bbr-e2e.json"
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: always()
         with:
@@ -128,19 +128,19 @@ jobs:
           if [[ '${{ runner.os }}' == Windows ]]; then ext='.exe'; fi
           for target in client server keygen; do go build -trimpath -buildvcs=false -o "validation-bin/wanopt-${target}${ext}" "./cmd/${target}"; done
           go build -trimpath -buildvcs=false -o "validation-bin/wanbench${ext}" ./tools/wanbench
-      - name: Actual binary end-to-end checks
+      - name: Actual binaries, interactive load, strict503 and five restart recoveries
         run: python tools/validation/check.py --bin validation-bin --report binary-e2e.json
       - name: Failure teardown keeps no process or credential directory
         shell: bash
         run: |
           if python tools/validation/check.py --bin validation-bin --fail-after-ready --report failure-e2e.json; then exit 1; fi
-          python -c "import json; r=json.load(open('failure-e2e.json')); assert r['error']=='intentional harness failure probe' and r['cleanup_passed'] and r['runtime_removed'] and not r['owned_processes_remaining']"
+            python -c "import json,os; r=json.load(open('failure-e2e.json')); d=r['failure_diagnostics']; assert r['error']=='intentional harness failure probe' and r['cleanup_passed'] and r['runtime_removed'] and not r['owned_processes_remaining']; assert len(d['processes'])==2 and all(isinstance(v,str) for v in d['metrics'].values()); assert os.name=='nt' or all(p.get('stack_signal')=='SIGQUIT' for p in d['processes']); assert os.name=='nt' or sum('goroutine' in v for v in d['logs'].values())>=2"
       - name: Isolated synthetic impaired links
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends iproute2 ethtool
-          sudo python3 tools/validation/check.py --bin validation-bin --netem --report netem-e2e.json
+          sudo python3 tools/validation/check.py --bin validation-bin --netem --gomaxprocs 1 --network-stress-repeats 3 --report netem-e2e.json
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: always()
         with:

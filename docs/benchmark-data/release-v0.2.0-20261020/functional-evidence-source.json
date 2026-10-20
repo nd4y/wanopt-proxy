@@ -1,0 +1,9 @@
+{
+  "cohort": "capped-acceptance-20261020-v2",
+  "source_commit": "ce3c7ce3207a21c918e0c50209b7693710a51006",
+  "original_report_sha256": "926d5a4c95e4e13725b76265690bce7499869ec1e146551ffef1ee641353c974",
+  "cases": 32,
+  "reason": "same immutable binaries; completed smoke precedes unrelated later host allowance guard; no redundant rerun",
+  "original_capacity_mbps": 100,
+  "current_capacity_mbps": 50
+}

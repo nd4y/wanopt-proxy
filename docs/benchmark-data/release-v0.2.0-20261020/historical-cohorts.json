@@ -1,0 +1,311 @@
+[
+  {
+    "cohort": "attempts/single-client-tail-timeout",
+    "classification": "failed",
+    "explanation": "Experimental BBR adaptive moderate random GET full body exceeded120s after158 successful matrix rows; cause unresolved.",
+    "accepted_as_final_matrix": false,
+    "cleanup_audit_passed": true,
+    "files": [
+      {
+        "file": "attempts-single-client-tail-timeout-measurements.jsonl",
+        "original_sha256": "55a75b2a8d1507d94f9236783581942eeea2eaaebe2125e6325d5aea50a8959e",
+        "public_sha256": "55a75b2a8d1507d94f9236783581942eeea2eaaebe2125e6325d5aea50a8959e",
+        "redacted": false
+      },
+      {
+        "file": "attempts-single-client-tail-timeout-functional.json",
+        "original_sha256": "03e67b9d8dc6b18a72c69b7ddacb1a1ff8d6695518e3cae61410633eaf3fe12a",
+        "public_sha256": "03e67b9d8dc6b18a72c69b7ddacb1a1ff8d6695518e3cae61410633eaf3fe12a",
+        "redacted": false
+      },
+      {
+        "file": "attempts-single-client-tail-timeout-client-observations.jsonl",
+        "original_sha256": "87dc4d7350839a71f70417ff9a2e70e51e16fbe617d51cf69f53fb6bb03b4f7e",
+        "public_sha256": "87dc4d7350839a71f70417ff9a2e70e51e16fbe617d51cf69f53fb6bb03b4f7e",
+        "redacted": false
+      },
+      {
+        "file": "attempts-single-client-tail-timeout-server-observations.jsonl",
+        "original_sha256": "34d7634bc50ecf700a2edfb5662ac766b405b8f821e77c8692ba08e99677aef5",
+        "public_sha256": "34d7634bc50ecf700a2edfb5662ac766b405b8f821e77c8692ba08e99677aef5",
+        "redacted": false
+      },
+      {
+        "file": "attempts-single-client-tail-timeout-controller-exit.json",
+        "original_sha256": "d56a6d1517269d955bc8733bb284b3a600cc05277b710783becfda705d9595d2",
+        "public_sha256": "d56a6d1517269d955bc8733bb284b3a600cc05277b710783becfda705d9595d2",
+        "redacted": false
+      },
+      {
+        "file": "attempts-single-client-tail-timeout-cleanup-errors.json",
+        "original_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "public_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "redacted": false
+      },
+      {
+        "file": "attempts-single-client-tail-timeout-archive-reason.json",
+        "original_sha256": "6a6936e57441b025dfc92e54cb0d6be591a15b6d43dbd0f57e91baf1e318ef99",
+        "public_sha256": "6a6936e57441b025dfc92e54cb0d6be591a15b6d43dbd0f57e91baf1e318ef99",
+        "redacted": false
+      },
+      {
+        "file": "attempts-single-client-tail-timeout-failure-probe.json",
+        "original_sha256": "a3a2bb050a6180934e026d10fc7102265d75f09adb7f40a9a078e31c3e38d0c0",
+        "public_sha256": "a3a2bb050a6180934e026d10fc7102265d75f09adb7f40a9a078e31c3e38d0c0",
+        "redacted": false
+      }
+    ]
+  },
+  {
+    "cohort": "tail-diagnostic1",
+    "classification": "diagnostic",
+    "explanation": "Persistent BBR adaptive3 GET/3 POST passed; not full-history acceptance.",
+    "accepted_as_final_matrix": false,
+    "cleanup_audit_passed": true,
+    "files": [
+      {
+        "file": "tail-diagnostic1-measurements.jsonl",
+        "original_sha256": "b29286ba0986c570e3315035a70e4f096d75438f4253b4175a4efd2f7611e202",
+        "public_sha256": "b29286ba0986c570e3315035a70e4f096d75438f4253b4175a4efd2f7611e202",
+        "redacted": false
+      },
+      {
+        "file": "tail-diagnostic1-client-observations.jsonl",
+        "original_sha256": "68fe14f621987dd1f091f39775304d5182324dfd9537bf2f671e0d18b61d14c5",
+        "public_sha256": "68fe14f621987dd1f091f39775304d5182324dfd9537bf2f671e0d18b61d14c5",
+        "redacted": false
+      },
+      {
+        "file": "tail-diagnostic1-server-observations.jsonl",
+        "original_sha256": "923e67df730c4688eca10148aa1cca2d9159f8d34bfa14a00790cdb7e80d9dfd",
+        "public_sha256": "923e67df730c4688eca10148aa1cca2d9159f8d34bfa14a00790cdb7e80d9dfd",
+        "redacted": false
+      },
+      {
+        "file": "tail-diagnostic1-controller-exit.json",
+        "original_sha256": "1c1f6265ec925998eed786044cbb94f9cf13a3cd133b73b4c0a08aff2f2af153",
+        "public_sha256": "1c1f6265ec925998eed786044cbb94f9cf13a3cd133b73b4c0a08aff2f2af153",
+        "redacted": false
+      },
+      {
+        "file": "tail-diagnostic1-cleanup-errors.json",
+        "original_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "public_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "redacted": false
+      }
+    ]
+  },
+  {
+    "cohort": "tail-diagnostic2",
+    "classification": "interrupted",
+    "explanation": "App restart interrupted fresh-client diagnostic after4 GET/4 POST; controlled cleanup passed.",
+    "accepted_as_final_matrix": false,
+    "cleanup_audit_passed": true,
+    "files": [
+      {
+        "file": "tail-diagnostic2-measurements.jsonl",
+        "original_sha256": "a41544fceb0e30e0c4e1de37c4ed4e7b24abe4d65b078e52b68da9d24fe95dc9",
+        "public_sha256": "a41544fceb0e30e0c4e1de37c4ed4e7b24abe4d65b078e52b68da9d24fe95dc9",
+        "redacted": false
+      },
+      {
+        "file": "tail-diagnostic2-client-observations.jsonl",
+        "original_sha256": "409f39d5fe089e17efe2af661d5ad5b5b49f79f6bcc054d9b6b5c889ec832adb",
+        "public_sha256": "409f39d5fe089e17efe2af661d5ad5b5b49f79f6bcc054d9b6b5c889ec832adb",
+        "redacted": false
+      },
+      {
+        "file": "tail-diagnostic2-server-observations.jsonl",
+        "original_sha256": "68a418dc48d4bae73a46548c7c7da5a88ce504f7f0921bf42ef7b29943760e92",
+        "public_sha256": "68a418dc48d4bae73a46548c7c7da5a88ce504f7f0921bf42ef7b29943760e92",
+        "redacted": false
+      },
+      {
+        "file": "tail-diagnostic2-controller-exit.json",
+        "original_sha256": "5d9a59f6a78c90a154bf6b1e8d4c82da83ef96035e5fa0f2068ad258fa908521",
+        "public_sha256": "5d9a59f6a78c90a154bf6b1e8d4c82da83ef96035e5fa0f2068ad258fa908521",
+        "redacted": false
+      },
+      {
+        "file": "tail-diagnostic2-cleanup-errors.json",
+        "original_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "public_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "redacted": false
+      }
+    ]
+  },
+  {
+    "cohort": "tail-diagnostic3",
+    "classification": "diagnostic",
+    "explanation": "12 fresh GET/12 fresh POST passed; does not erase original timeout.",
+    "accepted_as_final_matrix": false,
+    "cleanup_audit_passed": true,
+    "files": [
+      {
+        "file": "tail-diagnostic3-measurements.jsonl",
+        "original_sha256": "edc9d12587677d97131ad8a0f881cd9325d6812b4f1b990219680f33dcadc033",
+        "public_sha256": "edc9d12587677d97131ad8a0f881cd9325d6812b4f1b990219680f33dcadc033",
+        "redacted": false
+      },
+      {
+        "file": "tail-diagnostic3-client-observations.jsonl",
+        "original_sha256": "691cadfe5b2947ed27080c7f6543d642f510563efbf9b795efdf36138301819c",
+        "public_sha256": "691cadfe5b2947ed27080c7f6543d642f510563efbf9b795efdf36138301819c",
+        "redacted": false
+      },
+      {
+        "file": "tail-diagnostic3-server-observations.jsonl",
+        "original_sha256": "97527a489692d987abf98aea96bd676dbecbcf148fae7846aae2d572f49be6bc",
+        "public_sha256": "97527a489692d987abf98aea96bd676dbecbcf148fae7846aae2d572f49be6bc",
+        "redacted": false
+      },
+      {
+        "file": "tail-diagnostic3-controller-exit.json",
+        "original_sha256": "faa7682aa82199275143d680a16e162338a902b0786b087e3f7b5f7ef4dd4ced",
+        "public_sha256": "faa7682aa82199275143d680a16e162338a902b0786b087e3f7b5f7ef4dd4ced",
+        "redacted": false
+      },
+      {
+        "file": "tail-diagnostic3-cleanup-errors.json",
+        "original_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "public_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "redacted": false
+      }
+    ]
+  },
+  {
+    "cohort": "history-diagnostic-20261020",
+    "classification": "guard-stopped",
+    "explanation": "Shared inbound allowance counter+17; first observed increase overlaps native direct TCP. Attribution to older timeout unproven.",
+    "accepted_as_final_matrix": false,
+    "cleanup_audit_passed": true,
+    "files": [
+      {
+        "file": "history-diagnostic-20261020-measurements.jsonl",
+        "original_sha256": "e2df5fa17940814063ae09eb9d157544ab5bb22ed7daf66f2e7fcf15f88396df",
+        "public_sha256": "e2df5fa17940814063ae09eb9d157544ab5bb22ed7daf66f2e7fcf15f88396df",
+        "redacted": false
+      },
+      {
+        "file": "history-diagnostic-20261020-functional.json",
+        "original_sha256": "306c89d9327d3915e556016ed209ae8f782a64798e6ad33eb7ca7189e061471a",
+        "public_sha256": "306c89d9327d3915e556016ed209ae8f782a64798e6ad33eb7ca7189e061471a",
+        "redacted": false
+      },
+      {
+        "file": "history-diagnostic-20261020-client-observations.jsonl",
+        "original_sha256": "f54fae20c431d03e6634756846b04ec87480b87bafb4aee6abd68d194aa8c22a",
+        "public_sha256": "f54fae20c431d03e6634756846b04ec87480b87bafb4aee6abd68d194aa8c22a",
+        "redacted": false
+      },
+      {
+        "file": "history-diagnostic-20261020-server-observations.jsonl",
+        "original_sha256": "0f3419cd19ca9e144ff5a9fa7a469bb19336e0e74f99048766bf1b91f05d0e06",
+        "public_sha256": "0f3419cd19ca9e144ff5a9fa7a469bb19336e0e74f99048766bf1b91f05d0e06",
+        "redacted": false
+      },
+      {
+        "file": "history-diagnostic-20261020-controller-exit.json",
+        "original_sha256": "4c61d6147e961d009d4963a21284dc84a2a4b940382ca6bbc22a13ce5c29b882",
+        "public_sha256": "4c61d6147e961d009d4963a21284dc84a2a4b940382ca6bbc22a13ce5c29b882",
+        "redacted": false
+      },
+      {
+        "file": "history-diagnostic-20261020-cleanup-errors.json",
+        "original_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "public_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "redacted": false
+      },
+      {
+        "file": "history-diagnostic-20261020-physical-guard-interruption.json",
+        "original_sha256": "e5018746b08d660c5f63862da3c4987755ac0da0400095f95b1c12273706fc1d",
+        "public_sha256": "e5018746b08d660c5f63862da3c4987755ac0da0400095f95b1c12273706fc1d",
+        "redacted": false
+      },
+      {
+        "file": "history-diagnostic-20261020-physical-allowance-analysis.json",
+        "original_sha256": "a64e12d2c16cb26ca8a77741aa8c4063441346861ce4479f507e63d4ce699214",
+        "public_sha256": "a64e12d2c16cb26ca8a77741aa8c4063441346861ce4479f507e63d4ce699214",
+        "redacted": false
+      },
+      {
+        "file": "history-diagnostic-20261020-client-guard-failure.json",
+        "original_sha256": "1049fd201e79f3854d710876e7883b64e82f759bcdf1810fb62d9b2fe33babd4",
+        "public_sha256": "1049fd201e79f3854d710876e7883b64e82f759bcdf1810fb62d9b2fe33babd4",
+        "redacted": false
+      }
+    ]
+  },
+  {
+    "cohort": "capped-history-20261020",
+    "classification": "setup-failed",
+    "explanation": "Harness profile replacement removed config action; failed before authenticated traffic. Generator corrected with behavioral regression tests.",
+    "accepted_as_final_matrix": false,
+    "cleanup_audit_passed": true,
+    "files": [
+      {
+        "file": "capped-history-20261020-controller-exit.json",
+        "original_sha256": "2f9a47b5a107a116ccba58f2bf084ace9a1900a78d36969c2cec13575fd7c6ab",
+        "public_sha256": "2f9a47b5a107a116ccba58f2bf084ace9a1900a78d36969c2cec13575fd7c6ab",
+        "redacted": false
+      },
+      {
+        "file": "capped-history-20261020-cleanup-errors.json",
+        "original_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "public_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "redacted": false
+      }
+    ]
+  },
+  {
+    "cohort": "capped-acceptance-20261020-v2",
+    "classification": "guard-stopped",
+    "explanation": "Shared inbound allowance counter+2. Completed functional evidence separately reused; partial matrix excluded.",
+    "accepted_as_final_matrix": false,
+    "cleanup_audit_passed": true,
+    "files": [
+      {
+        "file": "capped-acceptance-20261020-v2-measurements.jsonl",
+        "original_sha256": "f2c50d0d91ca9f52982766df53c04503d2e3350ca10505d2330e8a6f58aaffce",
+        "public_sha256": "f2c50d0d91ca9f52982766df53c04503d2e3350ca10505d2330e8a6f58aaffce",
+        "redacted": false
+      },
+      {
+        "file": "capped-acceptance-20261020-v2-functional.json",
+        "original_sha256": "926d5a4c95e4e13725b76265690bce7499869ec1e146551ffef1ee641353c974",
+        "public_sha256": "926d5a4c95e4e13725b76265690bce7499869ec1e146551ffef1ee641353c974",
+        "redacted": false
+      },
+      {
+        "file": "capped-acceptance-20261020-v2-client-observations.jsonl",
+        "original_sha256": "0779cafbb8baac8d5cb136d1fe831c6cc71e33b5154f48b0a1848a1e3f7898dd",
+        "public_sha256": "0779cafbb8baac8d5cb136d1fe831c6cc71e33b5154f48b0a1848a1e3f7898dd",
+        "redacted": false
+      },
+      {
+        "file": "capped-acceptance-20261020-v2-server-observations.jsonl",
+        "original_sha256": "fff5754c745b1a864a4f6199dce06a44ac5aeffc887df830a7e8b0f1fea9dc31",
+        "public_sha256": "fff5754c745b1a864a4f6199dce06a44ac5aeffc887df830a7e8b0f1fea9dc31",
+        "redacted": false
+      },
+      {
+        "file": "capped-acceptance-20261020-v2-controller-exit.json",
+        "original_sha256": "c00c1675670b2fdea2f88ed40e3ab1e0d38212524a756a1567564bf6e161a43c",
+        "public_sha256": "c00c1675670b2fdea2f88ed40e3ab1e0d38212524a756a1567564bf6e161a43c",
+        "redacted": false
+      },
+      {
+        "file": "capped-acceptance-20261020-v2-cleanup-errors.json",
+        "original_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "public_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "redacted": false
+      },
+      {
+        "file": "capped-acceptance-20261020-v2-client-guard-failure.json",
+        "original_sha256": "8b7bd7162405c0e5183570e3a4cd61b07a6ae42b486110747300cb9aed87f0f7",
+        "public_sha256": "8b7bd7162405c0e5183570e3a4cd61b07a6ae42b486110747300cb9aed87f0f7",
+        "redacted": false
+      }
+    ]
+  }
+]

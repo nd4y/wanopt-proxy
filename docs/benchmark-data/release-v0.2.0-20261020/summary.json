@@ -1,0 +1,2466 @@
+{
+  "schema": 1,
+  "version": "v0.2.0",
+  "source_commit": "ce3c7ce3207a21c918e0c50209b7693710a51006",
+  "main_ci_run": 39311899877,
+  "release_run": 39313236128,
+  "counts": {
+    "matrix_completed": 240,
+    "matrix_expected": 240,
+    "functional_completed": 32,
+    "functional_expected": 32,
+    "mixed_groups_completed": 24,
+    "mixed_groups_expected": 24,
+    "overload_groups_completed": 3,
+    "phase": {
+      "phase": "mixed-cycle",
+      "time": 1792518327.5276256,
+      "cycle": 11
+    },
+    "exit": {
+      "exit_code": 0,
+      "start": 1792508668.6069431,
+      "end": 1792518356.2185917
+    },
+    "cells_completed": 80
+  },
+  "acceptance": {
+    "matrix_cases": 240,
+    "functional_cases": 32,
+    "mixed_cycles": 12,
+    "source_readiness": true,
+    "mixed_pids_unchanged": true,
+    "no_memory_limit_events": true,
+    "no_unexpected_matrix_soak_reconnects": true,
+    "planned_fresh_client_per_proxy_invocation": true,
+    "retired_client_checks": [
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2850253",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2853911",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2854870",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2855484",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2856095",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2856987",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2857612",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2858214",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2858836",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2859448",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2860054",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2860661",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2861572",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2862184",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2862789",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2863409",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2864016",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2864918",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2865527",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2866416",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2867037",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2867653",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2868264",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2869176",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2869781",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2870392",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2871003",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2871598",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2872218",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2873121",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2873732",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2874352",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2874980",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2875882",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2876487",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2877094",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2878003",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2878626",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2879232",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2880139",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2880756",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2881641",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2882255",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2882926",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2883535",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2884440",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2885051",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2885670",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2886285",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2887547",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2888163",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2888783",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2889700",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2890307",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2890923",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2891822",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2892425",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2893050",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2893663",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2894565",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2895189",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2895804",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2896417",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2897314",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2897927",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2898552",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2899166",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2900075",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2900691",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2901309",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2901933",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2902538",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2903167",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2904077",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2904983",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2905588",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2906206",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2906821",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2907446",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2908357",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2908971",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2909593",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2910199",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2910818",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2911727",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2912338",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2912971",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2913874",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2914487",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2915107",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2916002",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2916624",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2917245",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2917862",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2918480",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2919097",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2919993",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2921257",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2921924",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2922843",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2923450",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2924374",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2924987",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2925617",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2926223",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2926837",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2927466",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2928380",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2928984",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2929628",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2930231",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2930854",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2931765",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2932410",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2933034",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2933635",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2934535",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2935172",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2935793",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2936696",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2937342",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2937956",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2938892",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2939526",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2940151",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2940791",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2941744",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2942389",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2943009",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2943647",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2944304",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2944923",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2945868",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2946485",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2947386",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2948022",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2948659",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2949282",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2949921",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2950536",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2951150",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2952082",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2952709",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2953339",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2953975",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2955241",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2955853",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2956719",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2957405",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2958267",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2958942",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2959548",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2960145",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2960740",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2961607",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2962275",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2962896",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2963483",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2964371",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2964970",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2965632",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2966492",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2967113",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2967705",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2968379",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2968996",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2969655",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2970246",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2971126",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2971723",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2972408",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2972999",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2973606",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2974570",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2975162",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2976030",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2976709",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2977376",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2978264",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2978922",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2979567",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2980182",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2981142",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2981815",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2982415",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2983013",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2983654",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2984260",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2984860",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_raw",
+        "pid": "2985831",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_adaptive",
+        "pid": "2986508",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "reno_adaptive",
+        "pid": "2987107",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2987795",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2991932",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "2996149",
+        "reconnects": 0.0,
+        "passed": true
+      },
+      {
+        "mode": "bbr_raw",
+        "pid": "3000265",
+        "reconnects": 0.0,
+        "passed": true
+      }
+    ],
+    "per_process_idle_goroutines_within_baseline_plus_8": true,
+    "all_udp_critical_deltas": {
+      "client": {
+        "SndbufErrors": 0,
+        "RcvbufErrors": 0,
+        "InErrors": 0,
+        "InCsumErrors": 0,
+        "MemErrors": 0
+      },
+      "server": {
+        "SndbufErrors": 0,
+        "RcvbufErrors": 0,
+        "InErrors": 0,
+        "InCsumErrors": 0,
+        "MemErrors": 0
+      }
+    },
+    "matrix_udp_critical_deltas": {
+      "client": {
+        "SndbufErrors": 0,
+        "RcvbufErrors": 0,
+        "InErrors": 0,
+        "InCsumErrors": 0,
+        "MemErrors": 0
+      },
+      "server": {
+        "SndbufErrors": 0,
+        "RcvbufErrors": 0,
+        "InErrors": 0,
+        "InCsumErrors": 0,
+        "MemErrors": 0
+      }
+    },
+    "mixed_udp_critical_deltas": {
+      "client": {
+        "SndbufErrors": 0,
+        "RcvbufErrors": 0,
+        "InErrors": 0,
+        "InCsumErrors": 0,
+        "MemErrors": 0
+      },
+      "server": {
+        "SndbufErrors": 0,
+        "RcvbufErrors": 0,
+        "InErrors": 0,
+        "InCsumErrors": 0,
+        "MemErrors": 0
+      }
+    },
+    "planned_lifecycle_noports_deltas": {
+      "client": 20,
+      "server": 0
+    }
+  },
+  "expanded_validation_ci_run": 39441638174,
+  "expanded_validation_ci_source": "3021458c191f003c432e22626f73b2e9dd09e1c1",
+  "ci_sndbuf_resolution": {
+    "resolved": true,
+    "failed_run": 39336186838,
+    "original_cumulative_sndbuf_errors": 1137,
+    "original_trace_limit": "No original phase/queue snapshot; the1137 events are not retroactively claimed as kernel-traced.",
+    "reproduction_run": 39338328865,
+    "reproduction_phase": "after-bench-interactive-bulk-GET-r2",
+    "reproduced_sndbuf_errors": 738,
+    "reproduced_qdisc_drops": 738,
+    "reproduction_sha256": "ee1450305c24e96c37ff91c7adb7d39d4b1ce9e7aeaa3a3328b7a9b0f77243ce",
+    "cause": "The no-loss delay profile used an unbounded veth line with a finite10000-packet queue; the reproduced overflow mapped one-for-one to UDP SndbufErrors.",
+    "correction": "Define the CI no-loss control as100Mbit/s without loss/jitter; keep10000queue and strict zero positive-error gates. Verify overflow reporting with a warmed raw UDP probe in separate disposable namespaces.",
+    "physical_latency_only_profile_uncapped": false,
+    "physical_capacities_mbps": {
+      "native": 50,
+      "latency": 50,
+      "moderate": 50,
+      "severe": 20
+    },
+    "runtime_changed": false,
+    "validation_ci_run": 39441638174,
+    "validation_source_commit": "3021458c191f003c432e22626f73b2e9dd09e1c1",
+    "validation": [
+      {
+        "report": "expanded-ci-bbr-e2e.json",
+        "sha256": "c0372df3c86de25889455bc2d758fef7b030643f85e762eb06c2632482aeb0d5",
+        "controller": "bbr",
+        "cases": 175,
+        "positive_critical_udp_deltas": [
+          {
+            "SndbufErrors": 0,
+            "RcvbufErrors": 0,
+            "InErrors": 0,
+            "InCsumErrors": 0,
+            "MemErrors": 0,
+            "NoPorts": 94
+          },
+          {
+            "SndbufErrors": 0,
+            "RcvbufErrors": 0,
+            "InErrors": 0,
+            "InCsumErrors": 0,
+            "MemErrors": 0,
+            "NoPorts": 1
+          }
+        ],
+        "no_loss_snapshots_without_drops": 159,
+        "separate_expected_queue_probe_drops": 999,
+        "separate_expected_queue_probe_sndbuf": 999,
+        "cleanup_and_runtime_removed": true
+      },
+      {
+        "report": "expanded-ci-netem-e2e.json",
+        "sha256": "54f78cf4637674b0d01c4de802ffbbf6f5ee723d2e45b6f8fb2b4202b4dedf3b",
+        "controller": "reno",
+        "cases": 175,
+        "positive_critical_udp_deltas": [
+          {
+            "SndbufErrors": 0,
+            "RcvbufErrors": 0,
+            "InErrors": 0,
+            "InCsumErrors": 0,
+            "MemErrors": 0,
+            "NoPorts": 51
+          },
+          {
+            "SndbufErrors": 0,
+            "RcvbufErrors": 0,
+            "InErrors": 0,
+            "InCsumErrors": 0,
+            "MemErrors": 0,
+            "NoPorts": 1
+          }
+        ],
+        "no_loss_snapshots_without_drops": 159,
+        "separate_expected_queue_probe_drops": 999,
+        "separate_expected_queue_probe_sndbuf": 999,
+        "cleanup_and_runtime_removed": true
+      }
+    ]
+  },
+  "controller_interruption": null,
+  "functional_evidence_source": {
+    "cohort": "capped-acceptance-20261020-v2",
+    "source_commit": "ce3c7ce3207a21c918e0c50209b7693710a51006",
+    "original_report_sha256": "926d5a4c95e4e13725b76265690bce7499869ec1e146551ffef1ee641353c974",
+    "cases": 32,
+    "reason": "same immutable binaries; completed smoke precedes unrelated later host allowance guard; no redundant rerun",
+    "original_capacity_mbps": 100,
+    "current_capacity_mbps": 50
+  },
+  "cohort": "capped-acceptance-20261020-v3",
+  "resources": {
+    "client": {
+      "peak_bytes": 79007744,
+      "minimum_host_available_bytes": 222969856,
+      "minimum_disk_free_bytes": 161558528,
+      "namespace_tcp_cc": "bbr"
+    },
+    "server": {
+      "peak_bytes": 67473408,
+      "minimum_host_available_bytes": 2792103936,
+      "minimum_disk_free_bytes": 32388358144,
+      "namespace_tcp_cc": "bbr"
+    }
+  },
+  "observation_coverage": {
+    "client": {
+      "physical_counter_samples": 1915,
+      "physical_driver_query_exit": 0,
+      "observed_physical_driver_counters": [
+        "bw_in_allowance_exceeded",
+        "bw_out_allowance_exceeded",
+        "conntrack_allowance_available",
+        "conntrack_allowance_exceeded",
+        "linklocal_allowance_exceeded",
+        "pps_allowance_exceeded",
+        "queue_0_rx_xdp_drop",
+        "queue_0_tx_missed_tx",
+        "queue_1_rx_xdp_drop",
+        "queue_1_tx_missed_tx",
+        "reset_fail",
+        "tx_timeout"
+      ],
+      "observed_physical_statistics": [
+        "rx_bytes",
+        "rx_crc_errors",
+        "rx_dropped",
+        "rx_errors",
+        "rx_fifo_errors",
+        "rx_frame_errors",
+        "rx_length_errors",
+        "rx_missed_errors",
+        "rx_over_errors",
+        "rx_packets",
+        "tx_aborted_errors",
+        "tx_bytes",
+        "tx_carrier_errors",
+        "tx_dropped",
+        "tx_errors",
+        "tx_fifo_errors",
+        "tx_heartbeat_errors",
+        "tx_packets",
+        "tx_window_errors"
+      ],
+      "physical_allowance_drop_error_deltas_zero": true,
+      "samples": 1915,
+      "steady_samples": 1873,
+      "maximum_steady_gap_seconds": 8.502771615982056
+    },
+    "server": {
+      "physical_counter_samples": 1305,
+      "physical_driver_query_exit": 0,
+      "observed_physical_driver_counters": [
+        "rx0_drops",
+        "rx0_xdp_drops",
+        "rx_drops",
+        "rx_xdp_drops",
+        "tx0_tx_timeouts",
+        "tx0_xdp_tx_drops",
+        "tx_tx_timeouts",
+        "tx_xdp_tx_drops"
+      ],
+      "observed_physical_statistics": [
+        "rx_bytes",
+        "rx_crc_errors",
+        "rx_dropped",
+        "rx_errors",
+        "rx_fifo_errors",
+        "rx_frame_errors",
+        "rx_length_errors",
+        "rx_missed_errors",
+        "rx_over_errors",
+        "rx_packets",
+        "tx_aborted_errors",
+        "tx_bytes",
+        "tx_carrier_errors",
+        "tx_dropped",
+        "tx_errors",
+        "tx_fifo_errors",
+        "tx_heartbeat_errors",
+        "tx_packets",
+        "tx_window_errors"
+      ],
+      "physical_allowance_drop_error_deltas_zero": true,
+      "samples": 1305,
+      "steady_samples": 1274,
+      "maximum_steady_gap_seconds": 10.098999500274658
+    }
+  },
+  "table": [
+    {
+      "profile": "native",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "tcp",
+      "repeats": 3,
+      "median_mbps": 47.10504466041238,
+      "min_mbps": 47.065385313511044,
+      "max_mbps": 47.130625167900234,
+      "ratio_to_tcp_medians": 1.0
+    },
+    {
+      "profile": "native",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "reno_raw",
+      "repeats": 3,
+      "median_mbps": 47.50378935763053,
+      "min_mbps": 47.49043015189139,
+      "max_mbps": 47.516510168722675,
+      "ratio_to_tcp_medians": 1.0084650104907609
+    },
+    {
+      "profile": "native",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "reno_adaptive",
+      "repeats": 3,
+      "median_mbps": 288.6667368810037,
+      "min_mbps": 287.88638663006196,
+      "max_mbps": 288.86595749462657,
+      "ratio_to_tcp_medians": 6.128149096599892
+    },
+    {
+      "profile": "native",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "bbr_raw",
+      "repeats": 3,
+      "median_mbps": 46.87769501593315,
+      "min_mbps": 46.464626527106084,
+      "max_mbps": 46.902396482288715,
+      "ratio_to_tcp_medians": 0.9951735605789521
+    },
+    {
+      "profile": "native",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "bbr_adaptive",
+      "repeats": 3,
+      "median_mbps": 263.91470401949147,
+      "min_mbps": 261.7976722054877,
+      "max_mbps": 264.30657692395283,
+      "ratio_to_tcp_medians": 5.602684509102874
+    },
+    {
+      "profile": "native",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "tcp",
+      "repeats": 3,
+      "median_mbps": 47.04000251529889,
+      "min_mbps": 46.69040693058565,
+      "max_mbps": 47.10537570850819,
+      "ratio_to_tcp_medians": 1.0
+    },
+    {
+      "profile": "native",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "reno_raw",
+      "repeats": 3,
+      "median_mbps": 47.30435377607343,
+      "min_mbps": 47.29522531787225,
+      "max_mbps": 47.31135227468437,
+      "ratio_to_tcp_medians": 1.0056197118758352
+    },
+    {
+      "profile": "native",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "reno_adaptive",
+      "repeats": 3,
+      "median_mbps": 277.31860500217977,
+      "min_mbps": 257.8264497684471,
+      "max_mbps": 277.79279356498256,
+      "ratio_to_tcp_medians": 5.895378192464744
+    },
+    {
+      "profile": "native",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "bbr_raw",
+      "repeats": 3,
+      "median_mbps": 46.69909913452809,
+      "min_mbps": 46.66855524128732,
+      "max_mbps": 46.70661544129383,
+      "ratio_to_tcp_medians": 0.9927529047078617
+    },
+    {
+      "profile": "native",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "bbr_adaptive",
+      "repeats": 3,
+      "median_mbps": 272.62901291228246,
+      "min_mbps": 267.68153396099274,
+      "max_mbps": 273.3748301520107,
+      "ratio_to_tcp_medians": 5.79568448840144
+    },
+    {
+      "profile": "native",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "tcp",
+      "repeats": 3,
+      "median_mbps": 47.05698108162303,
+      "min_mbps": 47.051271005279744,
+      "max_mbps": 47.05889072847217,
+      "ratio_to_tcp_medians": 1.0
+    },
+    {
+      "profile": "native",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "reno_raw",
+      "repeats": 3,
+      "median_mbps": 47.493138428484535,
+      "min_mbps": 47.27612344371577,
+      "max_mbps": 47.51647516024777,
+      "ratio_to_tcp_medians": 1.009268706509348
+    },
+    {
+      "profile": "native",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "reno_adaptive",
+      "repeats": 3,
+      "median_mbps": 47.31499707138154,
+      "min_mbps": 47.29127189236247,
+      "max_mbps": 47.509984863472546,
+      "ratio_to_tcp_medians": 1.0054830544550015
+    },
+    {
+      "profile": "native",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "bbr_raw",
+      "repeats": 3,
+      "median_mbps": 46.797967404000545,
+      "min_mbps": 46.77771678539295,
+      "max_mbps": 46.83027653911406,
+      "ratio_to_tcp_medians": 0.9944957438477999
+    },
+    {
+      "profile": "native",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "bbr_adaptive",
+      "repeats": 3,
+      "median_mbps": 46.764821078570606,
+      "min_mbps": 46.35262169071845,
+      "max_mbps": 46.844781548086786,
+      "ratio_to_tcp_medians": 0.9937913568542432
+    },
+    {
+      "profile": "native",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "tcp",
+      "repeats": 3,
+      "median_mbps": 47.10686444076291,
+      "min_mbps": 46.95142091933441,
+      "max_mbps": 47.1122754632531,
+      "ratio_to_tcp_medians": 1.0
+    },
+    {
+      "profile": "native",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "reno_raw",
+      "repeats": 3,
+      "median_mbps": 47.30688102458293,
+      "min_mbps": 47.27324839775696,
+      "max_mbps": 47.30932611472437,
+      "ratio_to_tcp_medians": 1.0042460177766988
+    },
+    {
+      "profile": "native",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "reno_adaptive",
+      "repeats": 3,
+      "median_mbps": 47.29570901105213,
+      "min_mbps": 47.29561075301297,
+      "max_mbps": 47.3033102599065,
+      "ratio_to_tcp_medians": 1.0040088546017893
+    },
+    {
+      "profile": "native",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "bbr_raw",
+      "repeats": 3,
+      "median_mbps": 46.689196724084226,
+      "min_mbps": 46.66127407645932,
+      "max_mbps": 46.69700959348485,
+      "ratio_to_tcp_medians": 0.9911336124440228
+    },
+    {
+      "profile": "native",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "bbr_adaptive",
+      "repeats": 3,
+      "median_mbps": 46.69562874350068,
+      "min_mbps": 46.683319011537655,
+      "max_mbps": 46.70366966134591,
+      "ratio_to_tcp_medians": 0.9912701534660757
+    },
+    {
+      "profile": "latency",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "tcp",
+      "repeats": 3,
+      "median_mbps": 46.66142630820876,
+      "min_mbps": 46.378863822003474,
+      "max_mbps": 46.70875497299418,
+      "ratio_to_tcp_medians": 1.0
+    },
+    {
+      "profile": "latency",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "reno_raw",
+      "repeats": 3,
+      "median_mbps": 47.31507838282632,
+      "min_mbps": 47.30524137274954,
+      "max_mbps": 47.31698583101137,
+      "ratio_to_tcp_medians": 1.01400840322154
+    },
+    {
+      "profile": "latency",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "reno_adaptive",
+      "repeats": 3,
+      "median_mbps": 285.3196081636826,
+      "min_mbps": 280.67258984219905,
+      "max_mbps": 285.332807608792,
+      "ratio_to_tcp_medians": 6.114678241489773
+    },
+    {
+      "profile": "latency",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "bbr_raw",
+      "repeats": 3,
+      "median_mbps": 46.43870386983689,
+      "min_mbps": 45.95740237968827,
+      "max_mbps": 46.46212960584353,
+      "ratio_to_tcp_medians": 0.9952268403262957
+    },
+    {
+      "profile": "latency",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "bbr_adaptive",
+      "repeats": 3,
+      "median_mbps": 253.07300095675612,
+      "min_mbps": 247.04943476220717,
+      "max_mbps": 256.8699560836091,
+      "ratio_to_tcp_medians": 5.4236019123194925
+    },
+    {
+      "profile": "latency",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "tcp",
+      "repeats": 3,
+      "median_mbps": 46.71634011042495,
+      "min_mbps": 46.70116667929725,
+      "max_mbps": 46.72270493638954,
+      "ratio_to_tcp_medians": 1.0
+    },
+    {
+      "profile": "latency",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "reno_raw",
+      "repeats": 3,
+      "median_mbps": 47.10335615844363,
+      "min_mbps": 47.10290296114156,
+      "max_mbps": 47.107449027648734,
+      "ratio_to_tcp_medians": 1.0082843828755395
+    },
+    {
+      "profile": "latency",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "reno_adaptive",
+      "repeats": 3,
+      "median_mbps": 236.23185010033217,
+      "min_mbps": 233.8141674700375,
+      "max_mbps": 259.1669116378686,
+      "ratio_to_tcp_medians": 5.056728535282155
+    },
+    {
+      "profile": "latency",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "bbr_raw",
+      "repeats": 3,
+      "median_mbps": 46.248659506614075,
+      "min_mbps": 46.24502060665134,
+      "max_mbps": 46.27000672085129,
+      "ratio_to_tcp_medians": 0.989988928869312
+    },
+    {
+      "profile": "latency",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "bbr_adaptive",
+      "repeats": 3,
+      "median_mbps": 265.77449431496416,
+      "min_mbps": 258.4763604165618,
+      "max_mbps": 266.7891356759947,
+      "ratio_to_tcp_medians": 5.689112068427112
+    },
+    {
+      "profile": "latency",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "tcp",
+      "repeats": 3,
+      "median_mbps": 46.67993421486211,
+      "min_mbps": 46.67531931521929,
+      "max_mbps": 46.70035909899002,
+      "ratio_to_tcp_medians": 1.0
+    },
+    {
+      "profile": "latency",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "reno_raw",
+      "repeats": 3,
+      "median_mbps": 47.30311718618381,
+      "min_mbps": 47.299633021732745,
+      "max_mbps": 47.31442113013127,
+      "ratio_to_tcp_medians": 1.013350125311944
+    },
+    {
+      "profile": "latency",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "reno_adaptive",
+      "repeats": 3,
+      "median_mbps": 47.290525361931294,
+      "min_mbps": 47.26039512831247,
+      "max_mbps": 47.31294014986153,
+      "ratio_to_tcp_medians": 1.0130803771971637
+    },
+    {
+      "profile": "latency",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "bbr_raw",
+      "repeats": 3,
+      "median_mbps": 46.23283681816217,
+      "min_mbps": 46.18801579790339,
+      "max_mbps": 46.49232168592842,
+      "ratio_to_tcp_medians": 0.990422064550434
+    },
+    {
+      "profile": "latency",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "bbr_adaptive",
+      "repeats": 3,
+      "median_mbps": 46.39923241662499,
+      "min_mbps": 45.693710593566784,
+      "max_mbps": 46.42901341370094,
+      "ratio_to_tcp_medians": 0.993986671083445
+    },
+    {
+      "profile": "latency",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "tcp",
+      "repeats": 3,
+      "median_mbps": 46.57209316492545,
+      "min_mbps": 46.42697450229521,
+      "max_mbps": 46.59123527137316,
+      "ratio_to_tcp_medians": 1.0
+    },
+    {
+      "profile": "latency",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "reno_raw",
+      "repeats": 3,
+      "median_mbps": 47.10448019385871,
+      "min_mbps": 47.102231950482526,
+      "max_mbps": 47.107280684420424,
+      "ratio_to_tcp_medians": 1.0114314601890004
+    },
+    {
+      "profile": "latency",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "reno_adaptive",
+      "repeats": 3,
+      "median_mbps": 47.08202406990679,
+      "min_mbps": 47.079198272010835,
+      "max_mbps": 47.084189805338205,
+      "ratio_to_tcp_medians": 1.0109492803592812
+    },
+    {
+      "profile": "latency",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "bbr_raw",
+      "repeats": 3,
+      "median_mbps": 46.26615113528656,
+      "min_mbps": 46.26250407995668,
+      "max_mbps": 46.284519958326214,
+      "ratio_to_tcp_medians": 0.9934307863605044
+    },
+    {
+      "profile": "latency",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "bbr_adaptive",
+      "repeats": 3,
+      "median_mbps": 46.264380268839965,
+      "min_mbps": 46.25435985152895,
+      "max_mbps": 46.272292894417916,
+      "ratio_to_tcp_medians": 0.9933927621634746
+    },
+    {
+      "profile": "moderate",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "tcp",
+      "repeats": 3,
+      "median_mbps": 46.53935802272754,
+      "min_mbps": 46.23853216008318,
+      "max_mbps": 46.6291547467502,
+      "ratio_to_tcp_medians": 1.0
+    },
+    {
+      "profile": "moderate",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "reno_raw",
+      "repeats": 3,
+      "median_mbps": 6.504124750657572,
+      "min_mbps": 5.107498118201158,
+      "max_mbps": 8.19439745958583,
+      "ratio_to_tcp_medians": 0.13975536034427627
+    },
+    {
+      "profile": "moderate",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "reno_adaptive",
+      "repeats": 3,
+      "median_mbps": 61.37420144448476,
+      "min_mbps": 55.35916793336163,
+      "max_mbps": 65.75283855863725,
+      "ratio_to_tcp_medians": 1.3187590901987218
+    },
+    {
+      "profile": "moderate",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "bbr_raw",
+      "repeats": 3,
+      "median_mbps": 46.36118475535472,
+      "min_mbps": 46.06739525855331,
+      "max_mbps": 46.36732066308937,
+      "ratio_to_tcp_medians": 0.9961715572594317
+    },
+    {
+      "profile": "moderate",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "bbr_adaptive",
+      "repeats": 3,
+      "median_mbps": 264.894251112516,
+      "min_mbps": 256.69772687329214,
+      "max_mbps": 265.79614817372504,
+      "ratio_to_tcp_medians": 5.691832942413056
+    },
+    {
+      "profile": "moderate",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "tcp",
+      "repeats": 3,
+      "median_mbps": 46.63446174107427,
+      "min_mbps": 46.34025320895197,
+      "max_mbps": 46.684774172207206,
+      "ratio_to_tcp_medians": 1.0
+    },
+    {
+      "profile": "moderate",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "reno_raw",
+      "repeats": 3,
+      "median_mbps": 5.637859115540269,
+      "min_mbps": 5.362904609923359,
+      "max_mbps": 8.186903155666512,
+      "ratio_to_tcp_medians": 0.12089469686265528
+    },
+    {
+      "profile": "moderate",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "reno_adaptive",
+      "repeats": 3,
+      "median_mbps": 38.76589851405018,
+      "min_mbps": 33.30360206175067,
+      "max_mbps": 58.83573106271836,
+      "ratio_to_tcp_medians": 0.8312714903688126
+    },
+    {
+      "profile": "moderate",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "bbr_raw",
+      "repeats": 3,
+      "median_mbps": 45.99364669899757,
+      "min_mbps": 45.86532277913457,
+      "max_mbps": 46.126191669778144,
+      "ratio_to_tcp_medians": 0.9862587661966669
+    },
+    {
+      "profile": "moderate",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "bbr_adaptive",
+      "repeats": 3,
+      "median_mbps": 256.12388086598145,
+      "min_mbps": 253.8928852224589,
+      "max_mbps": 258.5108828670182,
+      "ratio_to_tcp_medians": 5.492159045129388
+    },
+    {
+      "profile": "moderate",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "tcp",
+      "repeats": 3,
+      "median_mbps": 46.565442693749404,
+      "min_mbps": 46.44577658831189,
+      "max_mbps": 46.65203305950397,
+      "ratio_to_tcp_medians": 1.0
+    },
+    {
+      "profile": "moderate",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "reno_raw",
+      "repeats": 3,
+      "median_mbps": 6.345615453961508,
+      "min_mbps": 6.000445912528463,
+      "max_mbps": 7.618426752014642,
+      "ratio_to_tcp_medians": 0.13627306188615482
+    },
+    {
+      "profile": "moderate",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "reno_adaptive",
+      "repeats": 3,
+      "median_mbps": 7.677365158876348,
+      "min_mbps": 5.68042441616284,
+      "max_mbps": 10.406073172649581,
+      "ratio_to_tcp_medians": 0.16487259037498422
+    },
+    {
+      "profile": "moderate",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "bbr_raw",
+      "repeats": 3,
+      "median_mbps": 46.11619579464284,
+      "min_mbps": 45.85243893048652,
+      "max_mbps": 46.32834946614973,
+      "ratio_to_tcp_medians": 0.9903523541682797
+    },
+    {
+      "profile": "moderate",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "bbr_adaptive",
+      "repeats": 3,
+      "median_mbps": 45.764329967604475,
+      "min_mbps": 45.0469718419728,
+      "max_mbps": 46.28247749330661,
+      "ratio_to_tcp_medians": 0.9827959817452253
+    },
+    {
+      "profile": "moderate",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "tcp",
+      "repeats": 3,
+      "median_mbps": 46.68543356656957,
+      "min_mbps": 46.677080730446626,
+      "max_mbps": 46.73012762499789,
+      "ratio_to_tcp_medians": 1.0
+    },
+    {
+      "profile": "moderate",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "reno_raw",
+      "repeats": 3,
+      "median_mbps": 6.627134966751336,
+      "min_mbps": 6.593289797230042,
+      "max_mbps": 7.824734313701354,
+      "ratio_to_tcp_medians": 0.14195294892788324
+    },
+    {
+      "profile": "moderate",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "reno_adaptive",
+      "repeats": 3,
+      "median_mbps": 6.86859318161677,
+      "min_mbps": 6.141963393304505,
+      "max_mbps": 9.718896494627659,
+      "ratio_to_tcp_medians": 0.14712497361350887
+    },
+    {
+      "profile": "moderate",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "bbr_raw",
+      "repeats": 3,
+      "median_mbps": 45.78247756204517,
+      "min_mbps": 45.590453853787864,
+      "max_mbps": 46.11140578237828,
+      "ratio_to_tcp_medians": 0.9806587208141302
+    },
+    {
+      "profile": "moderate",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "bbr_adaptive",
+      "repeats": 3,
+      "median_mbps": 45.9106697337405,
+      "min_mbps": 45.759541259248415,
+      "max_mbps": 46.17496557193971,
+      "ratio_to_tcp_medians": 0.9834045916758098
+    },
+    {
+      "profile": "severe",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "tcp",
+      "repeats": 3,
+      "median_mbps": 18.327583817781225,
+      "min_mbps": 18.043921029813998,
+      "max_mbps": 18.35168331584086,
+      "ratio_to_tcp_medians": 1.0
+    },
+    {
+      "profile": "severe",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "reno_raw",
+      "repeats": 3,
+      "median_mbps": 1.828111861043238,
+      "min_mbps": 1.7913068177593798,
+      "max_mbps": 1.8582852896773094,
+      "ratio_to_tcp_medians": 0.09974647390615797
+    },
+    {
+      "profile": "severe",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "reno_adaptive",
+      "repeats": 3,
+      "median_mbps": 12.253794526661068,
+      "min_mbps": 10.63143838042514,
+      "max_mbps": 14.76899795437468,
+      "ratio_to_tcp_medians": 0.6685984714893279
+    },
+    {
+      "profile": "severe",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "bbr_raw",
+      "repeats": 3,
+      "median_mbps": 18.221282282317983,
+      "min_mbps": 17.9863852460528,
+      "max_mbps": 18.243137104147852,
+      "ratio_to_tcp_medians": 0.9941999154651193
+    },
+    {
+      "profile": "severe",
+      "kind": "text",
+      "direction": "GET",
+      "mode": "bbr_adaptive",
+      "repeats": 3,
+      "median_mbps": 111.1925816218586,
+      "min_mbps": 109.43881037086427,
+      "max_mbps": 112.60980934485963,
+      "ratio_to_tcp_medians": 6.066952563271365
+    },
+    {
+      "profile": "severe",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "tcp",
+      "repeats": 3,
+      "median_mbps": 18.085271496851,
+      "min_mbps": 18.07998738940424,
+      "max_mbps": 18.14082502753411,
+      "ratio_to_tcp_medians": 1.0
+    },
+    {
+      "profile": "severe",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "reno_raw",
+      "repeats": 3,
+      "median_mbps": 1.7376644518678226,
+      "min_mbps": 1.6435331400398672,
+      "max_mbps": 1.8062373146595352,
+      "ratio_to_tcp_medians": 0.09608174542308552
+    },
+    {
+      "profile": "severe",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "reno_adaptive",
+      "repeats": 3,
+      "median_mbps": 9.55722205387424,
+      "min_mbps": 8.945544587707419,
+      "max_mbps": 13.457863326502792,
+      "ratio_to_tcp_medians": 0.5284533359390452
+    },
+    {
+      "profile": "severe",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "bbr_raw",
+      "repeats": 3,
+      "median_mbps": 18.150544285562102,
+      "min_mbps": 18.092592175305207,
+      "max_mbps": 18.18903633434329,
+      "ratio_to_tcp_medians": 1.0036091683070651
+    },
+    {
+      "profile": "severe",
+      "kind": "text",
+      "direction": "POST",
+      "mode": "bbr_adaptive",
+      "repeats": 3,
+      "median_mbps": 107.93598054204752,
+      "min_mbps": 103.73331141411028,
+      "max_mbps": 108.0478253126413,
+      "ratio_to_tcp_medians": 5.968170318086808
+    },
+    {
+      "profile": "severe",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "tcp",
+      "repeats": 3,
+      "median_mbps": 18.31509822582378,
+      "min_mbps": 17.537764555319338,
+      "max_mbps": 18.3642937151306,
+      "ratio_to_tcp_medians": 1.0
+    },
+    {
+      "profile": "severe",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "reno_raw",
+      "repeats": 3,
+      "median_mbps": 1.7992547570518633,
+      "min_mbps": 1.5352222074607598,
+      "max_mbps": 1.818505860512336,
+      "ratio_to_tcp_medians": 0.09823888110602454
+    },
+    {
+      "profile": "severe",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "reno_adaptive",
+      "repeats": 3,
+      "median_mbps": 1.8247983984243348,
+      "min_mbps": 1.5244503933147868,
+      "max_mbps": 1.8980055137230458,
+      "ratio_to_tcp_medians": 0.09963355783980561
+    },
+    {
+      "profile": "severe",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "bbr_raw",
+      "repeats": 3,
+      "median_mbps": 18.148092272235214,
+      "min_mbps": 17.82254108704509,
+      "max_mbps": 18.252006921223508,
+      "ratio_to_tcp_medians": 0.9908815147192007
+    },
+    {
+      "profile": "severe",
+      "kind": "random",
+      "direction": "GET",
+      "mode": "bbr_adaptive",
+      "repeats": 3,
+      "median_mbps": 18.26608492599049,
+      "min_mbps": 18.25888540343875,
+      "max_mbps": 18.334974543685366,
+      "ratio_to_tcp_medians": 0.9973238855053377
+    },
+    {
+      "profile": "severe",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "tcp",
+      "repeats": 3,
+      "median_mbps": 18.172735787309662,
+      "min_mbps": 18.146335464985857,
+      "max_mbps": 18.302597705127837,
+      "ratio_to_tcp_medians": 1.0
+    },
+    {
+      "profile": "severe",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "reno_raw",
+      "repeats": 3,
+      "median_mbps": 1.7840228104725333,
+      "min_mbps": 1.7349961760476014,
+      "max_mbps": 1.9805005908401616,
+      "ratio_to_tcp_medians": 0.09817029374951611
+    },
+    {
+      "profile": "severe",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "reno_adaptive",
+      "repeats": 3,
+      "median_mbps": 1.7349421911941827,
+      "min_mbps": 1.6709243451335722,
+      "max_mbps": 1.918376395790194,
+      "ratio_to_tcp_medians": 0.09546951056239551
+    },
+    {
+      "profile": "severe",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "bbr_raw",
+      "repeats": 3,
+      "median_mbps": 18.156897039745836,
+      "min_mbps": 18.101390554208045,
+      "max_mbps": 18.254738891374878,
+      "ratio_to_tcp_medians": 0.9991284335089003
+    },
+    {
+      "profile": "severe",
+      "kind": "random",
+      "direction": "POST",
+      "mode": "bbr_adaptive",
+      "repeats": 3,
+      "median_mbps": 18.158527568052765,
+      "min_mbps": 17.898863903030524,
+      "max_mbps": 18.179841137022127,
+      "ratio_to_tcp_medians": 0.999218157385702
+    }
+  ],
+  "mixed_fairness": [
+    {
+      "profile": "moderate",
+      "direction": "GET",
+      "cycles": 6,
+      "tcp_competing_median_mbps": 23.963274034952036,
+      "bbr_adaptive_competing_median_mbps": 19.150007651810633
+    },
+    {
+      "profile": "moderate",
+      "direction": "POST",
+      "cycles": 6,
+      "tcp_competing_median_mbps": 24.796538090171715,
+      "bbr_adaptive_competing_median_mbps": 17.481658934655194
+    },
+    {
+      "profile": "severe",
+      "direction": "GET",
+      "cycles": 6,
+      "tcp_competing_median_mbps": 9.143234159354414,
+      "bbr_adaptive_competing_median_mbps": 8.273623382947676
+    },
+    {
+      "profile": "severe",
+      "direction": "POST",
+      "cycles": 6,
+      "tcp_competing_median_mbps": 9.054603894531787,
+      "bbr_adaptive_competing_median_mbps": 8.429619981586516
+    }
+  ],
+  "interactive_latency": [
+    {
+      "profile": "moderate",
+      "direction": "GET",
+      "cycles": 6,
+      "baseline_p95_ms": 107.86869949999999,
+      "loaded_p95_ms": 210.01138300000002,
+      "loaded_p99_ms": 323.360809,
+      "loaded_to_idle_p95_medians_ratio": 1.9469167976758637
+    },
+    {
+      "profile": "moderate",
+      "direction": "POST",
+      "cycles": 6,
+      "baseline_p95_ms": 108.8003525,
+      "loaded_p95_ms": 222.6806385,
+      "loaded_p99_ms": 360.99881550000003,
+      "loaded_to_idle_p95_medians_ratio": 2.0466904139855613
+    },
+    {
+      "profile": "severe",
+      "direction": "GET",
+      "cycles": 6,
+      "baseline_p95_ms": 108.9856865,
+      "loaded_p95_ms": 190.88135,
+      "loaded_p99_ms": 250.24581,
+      "loaded_to_idle_p95_medians_ratio": 1.7514350382148576
+    },
+    {
+      "profile": "severe",
+      "direction": "POST",
+      "cycles": 6,
+      "baseline_p95_ms": 108.55694650000001,
+      "loaded_p95_ms": 166.2017985,
+      "loaded_p99_ms": 238.2781275,
+      "loaded_to_idle_p95_medians_ratio": 1.531010256446371
+    }
+  ],
+  "mixed_quantile_semantics": "Each latency cell is the median of six per-run quantiles, not a pooled quantile. Idle generators run5s and loaded generators10s. Results describe this path/CPU envelope, not universal fairness or priority.",
+  "profiles": {
+    "native": {
+      "added_delay_ms_per_side": 0,
+      "rate_mbit_per_second": 50,
+      "loss_percent_per_direction": 0,
+      "jitter_ms": 0
+    },
+    "latency": {
+      "added_delay_ms_per_side": 37.5808615,
+      "target_idle_rtt_ms": 100,
+      "rate_mbit_per_second": 50,
+      "loss_percent_per_direction": 0,
+      "jitter_ms": 0
+    },
+    "moderate": {
+      "added_delay_ms_per_side": 37.5808615,
+      "target_idle_rtt_ms": 100,
+      "rate_mbit_per_second": 50,
+      "loss_percent_per_direction": 0.1,
+      "jitter_ms": 5
+    },
+    "severe": {
+      "added_delay_ms_per_side": 37.5808615,
+      "target_idle_rtt_ms": 100,
+      "rate_mbit_per_second": 20,
+      "loss_percent_per_direction": 1,
+      "jitter_ms": 5
+    }
+  },
+  "native_idle_http_rtt_ms": 24.838276999999998,
+  "netem_queue_limit_packets": 10000,
+  "gso_disabled_in_lab": true,
+  "timing_coverage": {
+    "matrix_wall_seconds": 8230.128625869751,
+    "matrix_requested_generator_seconds_by_profile": {
+      "native": 16,
+      "latency": 16,
+      "moderate": 16,
+      "severe": 8
+    },
+    "mixed_wall_seconds": 1016.5691711902618,
+    "mixed_requested_generator_seconds_per_group": 10,
+    "controller_wall_seconds": 9687.61164855957
+  },
+  "all_original_service_identities_and_host_settings_preserved": true,
+  "cleanup_and_independent_audit_passed": true,
+  "real_counter_coverage": "Fresh namespace through final idle and observer collection, including planned client replacements; final server teardown follows collection. CI separately asserts counters through endpoint shutdown.",
+  "connection_semantics": "Each matrix invocation uses one finite1MiB warmup and a new HTTP benchmark transport. Each proxy invocation also starts a fresh client process/QUIC tunnel; only that mode runs. Server processes persist. Mixed cycles retain one client, with a second client only for explicit overload. Planned transitions and each retired client reconnect check are recorded. This is an end-to-end proxy comparison, not an isolated congestion-controller microbenchmark.",
+  "limits": [
+    "BBR is experimental opt-in; default Reno and compression=false unchanged.",
+    "No universal speedup or fairness claim; payload, CPU, path and loss matter.",
+    "Memory peaks are execution-cgroup accounting, not total host memory; host MemAvailable is guarded and reported separately.",
+    "No physical mobile migration or multi-day stability proof."
+  ],
+  "timing": "Goodput uses complete delivered bytes divided by full generation-plus-drain time; warmup reported separately."
+}

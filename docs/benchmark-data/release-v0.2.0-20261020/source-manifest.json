@@ -1,0 +1,47 @@
+{
+  "version": "v0.2.0",
+  "source_commit": "ce3c7ce3207a21c918e0c50209b7693710a51006",
+  "protocol": 2,
+  "default_controller": "reno",
+  "bbr": "experimental, opt-in, separate asset",
+  "go": "go version go1.27.2 linux/amd64",
+  "patch_sha256": {
+    "wanopt.patch": "f4b4fc7f570c51fc3d5c9ae621df20d2ca4627db5c258a356de0fbad5dc52f5a",
+    "quic-go.patch": "6279cf8880a994e9b1c4a5614d0ab2babb759b33e559cd307b81e5f169bbc555"
+  },
+  "normal_binary_rebuild_comparison": "PASS",
+  "packages": [
+    {
+      "asset": "wanopt-v0.2.0-linux-amd64.tar.gz",
+      "sha256": "0686b6460805db7af7f9981e134669bc4056e65665ad8e7e8692a7610a24bc73",
+      "binaries": {
+        "wanbench": "b5824fa18f47ec24ea6df8e3e3c1407efab84a18e1f1548caabb0b8ec33bed43",
+        "wanopt-client": "a6a7ae30dfdb3d9b872b8743dc71d6c16f666cf4bb683f6f8e0adfadd991ddef",
+        "wanopt-keygen": "295b374f9276f3ecb09df1aa93bdf11aa45fd3bf2122699fbf3d2c15e5b6467c",
+        "wanopt-server": "2a709e402806e759e21cfd3885ab1e607e35bee9f6439e3ec7fe3b63e6d6aae6"
+      }
+    },
+    {
+      "asset": "wanopt-v0.2.0-windows-amd64.zip",
+      "sha256": "3e88ff3892ed9e7037cb26b03df18dfe02eb405da481cd9d7c499e2666c2b029",
+      "binaries": {
+        "wanbench.exe": "f382fe26e9f8cccad190179d71bce61d267d48f480e512717a3bcc72cad12eab",
+        "wanopt-client.exe": "7afdc539420de1eaafcb5bd033d26e69a69322617e21e15a1776eb2d8b78cba7",
+        "wanopt-keygen.exe": "2a0406caaccfc1aeefe835bfbe0b6e403074029bea5ba3a1f7dcb988eb3d73ce",
+        "wanopt-server.exe": "2bee92e9fd510e3ee4e2bf1e118ecf891a628c47a806b7c20b25b5be0b89dab7"
+      }
+    },
+    {
+      "asset": "wanopt-v0.2.0-bbr-experimental-linux-amd64.tar.gz",
+      "sha256": "090599bb718020d440823b9baf6b0ced7375fa4749929965b2da09a894f665a1",
+      "binaries": {
+        "BASE_COMMIT": "f197c2849df40ebb1992ebc73f2f8d29d126bf936f96a009458e72a4c4caada0",
+        "PATCH_SHA256": "623fa1b90c97587382325824f593242537c8f64517bfcf44136f0e65f4f62a3a",
+        "wanbench": "b5824fa18f47ec24ea6df8e3e3c1407efab84a18e1f1548caabb0b8ec33bed43",
+        "wanopt-client": "727a05868d163838bbc80df3d1dd68579475a2ea1dcf754b73dc862ce9c2a573",
+        "wanopt-keygen": "c06bae245ede63a24971ba55c44491287d93c8f47cfe05c543f8d29a26ec114d",
+        "wanopt-server": "49d686909cdb5e525acbd377ce08f1b28c723e952b0f2265610bb94549df5954"
+      }
+    }
+  ]
+}
