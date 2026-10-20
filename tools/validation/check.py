@@ -453,8 +453,17 @@ finally:
             readable, _, _ = select.select([receiver.stdout], [], [], 3)
             if not readable or receiver.stdout.readline().strip() != "warm-delivered":
                 raise RuntimeError("negative probe neighbour warmup did not deliver")
+            # qdisc drop counters include every Ethernet protocol. A link-local
+            # control packet can share an all-protocol tiny queue but never
+            # increment UDP SndbufErrors. Classify only IPv4 UDP into this probe;
+            # leave ARP/IPv6 in a different band instead of relaxing equality.
             command(net.prefix(0) + ["tc", "qdisc", "replace", "dev", net.links[0], "root",
-                                    "netem", "limit", "1", "delay", "50ms"])
+                                    "handle", "1:", "prio", "bands", "3", "priomap"] + ["2"] * 16)
+            command(net.prefix(0) + ["tc", "qdisc", "add", "dev", net.links[0], "parent", "1:1",
+                                    "handle", "10:", "netem", "limit", "1", "delay", "50ms"])
+            command(net.prefix(0) + ["tc", "filter", "add", "dev", net.links[0], "parent", "1:",
+                                    "protocol", "ip", "priority", "1", "u32", "match", "ip", "protocol",
+                                    "17", "0xff", "flowid", "1:1"])
             before = net.counters()
             if before[1].get("InDatagrams", 0) < 1:
                 raise RuntimeError("negative probe warmup was not consumed")
@@ -471,12 +480,20 @@ s.close();print(json.dumps(dict(errors)))
             after = net.counters()
             queues = json.loads(command(net.prefix(0) + ["tc", "-s", "-j", "qdisc", "show",
                                                        "dev", net.links[0]]).stdout)
-            drops = sum(q.get("drops", 0) for q in queues)
+            probe_queues = [q for q in queues if q["kind"] == "netem" and q["handle"] == "10:"]
+            if len(probe_queues) != 1:
+                raise AssertionError("IPv4 UDP calibration queue missing or ambiguous")
+            drops = probe_queues[0].get("drops", 0)
             send_errors = after[0].get("SndbufErrors", 0) - before[0].get("SndbufErrors", 0)
             self.report["queue_overflow_probe"] = {"expected_fixture_failure": True, "before": before,
                 "after": after, "qdisc": queues, "send_errno_counts": errors,
                 "neighbour_warmed_and_delivery_checked": True, "ip_recverr": False,
-                "qdisc_drops": drops, "sndbuf_errors": send_errors}
+                "qdisc_drops": drops, "sndbuf_errors": send_errors,
+                "queue_protocol": "IPv4 UDP only; ARP/IPv6 use a different prio band",
+                "classes": json.loads(command(net.prefix(0) + ["tc", "-s", "-j", "class", "show",
+                                                              "dev", net.links[0]]).stdout),
+                "filters": json.loads(command(net.prefix(0) + ["tc", "-s", "-j", "filter", "show",
+                                                              "dev", net.links[0], "parent", "1:"]).stdout)}
             if drops <= 0 or drops != send_errors:
                 raise AssertionError(f"expected matching deliberate queue drops/SndbufErrors, got {drops}/{send_errors}")
             for first, last in zip(before, after):
