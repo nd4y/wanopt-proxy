@@ -104,18 +104,17 @@ class Network:
         for side in range(2) if self.enabled else []:
             p = self.prefix(side)
             command(p + ["tc", "qdisc", "del", "dev", self.links[side], "root"], check=False)
+            args = ["tc", "qdisc", "replace", "dev", self.links[side], "root", "netem", "limit", "10000"]
             if name != "native":
-                args = ["tc", "qdisc", "replace", "dev", self.links[side], "root", "netem",
-                        "limit", "10000", "delay", "50ms"]
-                if name != "latency":
-                    args += ["5ms", "loss"] + (["0.1%", "rate", "100mbit"] if name == "moderate" else ["1%", "rate", "20mbit"])
-                else:
-                    # An unbounded veth line is not a calibrated WAN: at high
-                    # speed its50ms delay can overflow a finite queue and add
-                    # unrequested loss. Match the moderate profile's100Mbit/s
-                    # capacity while removing its loss/jitter for this control.
-                    args += ["rate", "100mbit"]
-                command(p + args)
+                args += ["delay", "50ms"]
+            if name in ["moderate", "severe"]:
+                args += ["5ms", "loss"] + (["0.1%", "rate", "100mbit"] if name == "moderate" else ["1%", "rate", "20mbit"])
+            else:
+                # Both no-loss controls have a defined capacity. Native keeps
+                # the actual RTT; latency adds100ms. A real host/provider limit
+                # or finite unbounded-delay queue is not requested packet loss.
+                args += ["rate", "100mbit"]
+            command(p + args)
         self.active_profile = name
         self.observe("after-profile-" + name)
 
@@ -139,7 +138,7 @@ class Network:
                                               for a, b in zip(previous["nodes"], nodes)]
             except AssertionError as error:
                 raise AssertionError(f"{previous['phase']} -> {phase}: {error}") from error
-        if self.active_profile == "latency" and any(q.get("drops", 0) for node in nodes for q in node["qdisc"]):
+        if self.active_profile in ["native", "latency"] and any(q.get("drops", 0) for node in nodes for q in node["qdisc"]):
             raise AssertionError(phase + ": the calibrated no-loss queue dropped packets")
 
     def mtu(self, size):
@@ -847,6 +846,10 @@ s.close();print(json.dumps(dict(errors)))
             self.net.mtu(1500)
         self.record("final-lease-drain", snapshots=self.drain())
         metrics = [self.fetch(0, self.cm), self.fetch(1, self.sm)]
+        observed_procs = [metric(text, "go_sched_gomaxprocs_threads") for text in metrics]
+        self.report["observed_gomaxprocs"] = observed_procs
+        if observed_procs != [self.report["gomaxprocs"]] * 2:
+            raise AssertionError(f"actual Go scheduler parallelism differs from configuration: {observed_procs}")
         if not all(f'algorithm="{self.o.cc}"' in m for m in metrics):
             raise AssertionError("actual congestion controller was not observed on both endpoints")
         self.report["final_metrics"] = metrics
