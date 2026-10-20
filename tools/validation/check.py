@@ -35,8 +35,8 @@ while True:
 """
 
 
-def command(args, timeout=30, check=True):
-    p = subprocess.run(list(map(str, args)), capture_output=True, text=True, timeout=timeout)
+def command(args, timeout=30, check=True, env=None):
+    p = subprocess.run(list(map(str, args)), capture_output=True, text=True, timeout=timeout, env=env)
     if check and p.returncode:
         raise RuntimeError(f"{Path(str(args[0])).name} exited {p.returncode}: {p.stderr[-1000:]}")
     return p
@@ -181,7 +181,8 @@ class Suite:
         self.o, self.root = options, Path(runtime)
         self.net = Network(options.netem)
         self.processes = []
-        self.report = {"controller": options.cc, "netem": options.netem, "cases": [], "measurements": []}
+        self.report = {"controller": options.cc, "netem": options.netem,
+                       "gomaxprocs": getattr(options, "gomaxprocs", 2), "cases": [], "measurements": []}
         self.report["network_observations"] = self.net.observations
         self.suffix = ".exe" if os.name == "nt" else ""
         self.client = None
@@ -198,7 +199,7 @@ class Suite:
 
     def start(self, name, binary, args, side):
         log = open(self.root / (name + ".log"), "w+")
-        env = dict(os.environ, GOMAXPROCS="2", GOMEMLIMIT="64MiB")
+        env = dict(os.environ, GOMAXPROCS=str(self.report["gomaxprocs"]), GOMEMLIMIT="64MiB")
         if self.o.netem:
             env["QUIC_GO_DISABLE_GSO"] = "1"
         try:
@@ -291,7 +292,8 @@ class Suite:
         if proxy:
             args += ["-proxy", self.proxy]
         args += list(extra)
-        p = command(self.net.prefix(0) + args, timeout=145 if self.o.netem else 45, check=False)
+        p = command(self.net.prefix(0) + args, timeout=145 if self.o.netem else 45, check=False,
+                    env=dict(os.environ, GOMAXPROCS=str(self.report["gomaxprocs"]), GOMEMLIMIT="64MiB"))
         try:
             result = json.loads(p.stdout)
         except json.JSONDecodeError:
@@ -886,6 +888,8 @@ def main():
     parser.add_argument("--bin", type=Path, required=True)
     parser.add_argument("--cc", choices=["reno", "bbr"], default="reno")
     parser.add_argument("--netem", action="store_true")
+    parser.add_argument("--gomaxprocs", type=int, choices=[1, 2], default=2,
+                        help="Go scheduler parallelism for owned endpoints and benchmark processes")
     parser.add_argument("--fail-after-ready", action="store_true", help="exercise failure teardown, expects nonzero exit")
     parser.add_argument("--network-stress-repeats", type=int, choices=range(1, 6), default=1,
                         help="bounded repetitions of same-connection interactive and rate-step scenarios")

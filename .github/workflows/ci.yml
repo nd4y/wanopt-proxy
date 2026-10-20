@@ -97,7 +97,7 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends iproute2 ethtool
       - name: Actual BBR binaries and isolated impaired links
         # Only the disposable hosted runner is changed.
-        run: sudo python3 tools/validation/check.py --bin "${RUNNER_TEMP}/wanopt-bbr-bin" --cc bbr --netem --network-stress-repeats 3 --report "${GITHUB_WORKSPACE}/bbr-e2e.json"
+        run: sudo python3 tools/validation/check.py --bin "${RUNNER_TEMP}/wanopt-bbr-bin" --cc bbr --netem --gomaxprocs 1 --network-stress-repeats 3 --report "${GITHUB_WORKSPACE}/bbr-e2e.json"
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: always()
         with:
@@ -140,7 +140,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends iproute2 ethtool
-          sudo python3 tools/validation/check.py --bin validation-bin --netem --network-stress-repeats 3 --report netem-e2e.json
+          sudo python3 tools/validation/check.py --bin validation-bin --netem --gomaxprocs 1 --network-stress-repeats 3 --report netem-e2e.json
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: always()
         with:
