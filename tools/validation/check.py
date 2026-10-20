@@ -687,6 +687,14 @@ s.close();print(json.dumps(dict(errors)))
                         for proxy in [False, True]:
                             self.bench(label + ("-proxy" if proxy else "-tcp"), direction, kind, proxy,
                                        ["-warm", "-repeats", "2"])
+                if self.o.netem and compressed and profile in ["moderate", "severe"]:
+                    # Short finite/300ms probes do not cover a sustained random
+                    # response and its final HTTP chunk/trailers after loss.
+                    # Keep complete generation+drain time and the strict UDP gate.
+                    for repeat in range(self.o.network_stress_repeats):
+                        for direction in ["GET", "POST"]:
+                            self.bench(f"long-random-tail-{profile}-{direction}-r{repeat}", direction,
+                                       extra=["-stream", "-duration", "8s", "-warm"], size=1048576)
             self.bench(f"abort-recovery-{compressed}", "GET", extra=["-abort-after", "1024", "-warm"])
             for direction in ["GET", "POST"]:
                 self.bench(f"stream-{compressed}-{direction}", direction,
