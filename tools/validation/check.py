@@ -225,6 +225,37 @@ class Suite:
         if graceful and os.name != "nt" and code != 0:
             raise RuntimeError(f"SIGTERM exit code {code}")
 
+    def capture_failure(self):
+        # A failed positive request must keep the blocked workers' evidence;
+        # normal teardown would destroy it. Only these owned child PIDs qualify.
+        live = [(name, p) for name in ["client", "server"]
+                if (p := getattr(self, name, None)) is not None and p.poll() is None]
+        if not live:
+            return
+        evidence = {"time": time.time(), "metrics": {}, "processes": []}
+        self.report["failure_diagnostics"] = evidence
+        for side, name in [(0, "cm"), (1, "sm")]:
+            try:
+                evidence["metrics"][name] = self.fetch(side, getattr(self, name))
+            except Exception as error:
+                evidence["metrics"][name] = {"error": str(error)}
+        for name, p in live:
+            item = {"name": name, "pid": p.pid}
+            evidence["processes"].append(item)
+            if os.name != "nt":
+                try:
+                    p.send_signal(signal.SIGQUIT)
+                    p.wait(timeout=5)
+                    item["stack_signal"] = "SIGQUIT"
+                except (OSError, subprocess.TimeoutExpired) as error:
+                    item["error"] = str(error)
+        # Logs are copied into the report before TemporaryDirectory is removed.
+        evidence["logs"] = {}
+        for path in self.root.glob("*.log"):
+            with path.open("rb") as log:
+                log.seek(max(0, path.stat().st_size - 512000))
+                evidence["logs"][path.name] = log.read(512000).decode(errors="replace")
+
     def config(self, name, cfg):
         p = self.root / (name + ".json")
         p.write_text(json.dumps(cfg))
@@ -489,11 +520,14 @@ s.close();print(json.dumps(dict(errors)))
                 "after": after, "qdisc": queues, "send_errno_counts": errors,
                 "neighbour_warmed_and_delivery_checked": True, "ip_recverr": False,
                 "qdisc_drops": drops, "sndbuf_errors": send_errors,
-                "queue_protocol": "IPv4 UDP only; ARP/IPv6 use a different prio band",
-                "classes": json.loads(command(net.prefix(0) + ["tc", "-s", "-j", "class", "show",
-                                                              "dev", net.links[0]]).stdout),
-                "filters": json.loads(command(net.prefix(0) + ["tc", "-s", "-j", "filter", "show",
-                                                              "dev", net.links[0], "parent", "1:"]).stdout)}
+                "queue_protocol": "IPv4 UDP only; ARP/IPv6 use a different prio band"}
+            # Some tc builds do not emit valid JSON for prio class diagnostics.
+            # Preserve this supplementary output as text; the measured netem
+            # counters above remain structured and the exact equality is strict.
+            self.report["queue_overflow_probe"]["classes_text"] = command(net.prefix(0) +
+                ["tc", "-s", "class", "show", "dev", net.links[0]]).stdout
+            self.report["queue_overflow_probe"]["filters_text"] = command(net.prefix(0) +
+                ["tc", "-s", "filter", "show", "dev", net.links[0], "parent", "1:"]).stdout
             if drops <= 0 or drops != send_errors:
                 raise AssertionError(f"expected matching deliberate queue drops/SndbufErrors, got {drops}/{send_errors}")
             for first, last in zip(before, after):
@@ -710,6 +744,11 @@ s.close();print(json.dumps(dict(errors)))
                     # Keep complete generation+drain time and the strict UDP gate.
                     for repeat in range(self.o.network_stress_repeats):
                         for direction in ["GET", "POST"]:
+                            self.stop(self.client)
+                            name = f"client-long-tail-{profile}-{direction}-r{repeat}"
+                            self.client = self.start(name, "wanopt-client",
+                                                     ["-config", self.config(name, client_cfg)], 0)
+                            self.ready(0, self.cm, lambda t: metric(t, "wanopt_tunnel_connections") >= 1)
                             self.bench(f"long-random-tail-{profile}-{direction}-r{repeat}", direction,
                                        extra=["-stream", "-duration", "8s", "-warm"], size=1048576)
             self.bench(f"abort-recovery-{compressed}", "GET", extra=["-abort-after", "1024", "-warm"])
@@ -866,6 +905,10 @@ def main():
             except BaseException as error:
                 suite.report["passed"] = False
                 suite.report["error"] = str(error)
+                try:
+                    suite.capture_failure()
+                except Exception as diagnostic_error:
+                    suite.report["failure_diagnostic_error"] = str(diagnostic_error)
                 raise
             finally:
                 try:

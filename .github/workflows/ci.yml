@@ -134,7 +134,7 @@ jobs:
         shell: bash
         run: |
           if python tools/validation/check.py --bin validation-bin --fail-after-ready --report failure-e2e.json; then exit 1; fi
-          python -c "import json; r=json.load(open('failure-e2e.json')); assert r['error']=='intentional harness failure probe' and r['cleanup_passed'] and r['runtime_removed'] and not r['owned_processes_remaining']"
+            python -c "import json,os; r=json.load(open('failure-e2e.json')); d=r['failure_diagnostics']; assert r['error']=='intentional harness failure probe' and r['cleanup_passed'] and r['runtime_removed'] and not r['owned_processes_remaining']; assert len(d['processes'])==2 and all(isinstance(v,str) for v in d['metrics'].values()); assert os.name=='nt' or all(p.get('stack_signal')=='SIGQUIT' for p in d['processes']); assert os.name=='nt' or sum('goroutine' in v for v in d['logs'].values())>=2"
       - name: Isolated synthetic impaired links
         if: runner.os == 'Linux'
         run: |
