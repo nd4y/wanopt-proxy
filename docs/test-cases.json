@@ -732,6 +732,16 @@
       "workflow": "CI/test Python observation/asset checks (Linux and Windows)"
     },
     {
+      "file": "tools/validation/test_host_profile.py",
+      "name": "test_missing_or_ambiguous_profile_is_rejected",
+      "workflow": "CI/test Python observation/asset checks (Linux and Windows)"
+    },
+    {
+      "file": "tools/validation/test_host_profile.py",
+      "name": "test_replacement_preserves_configuration_and_other_actions",
+      "workflow": "CI/test Python observation/asset checks (Linux and Windows)"
+    },
+    {
       "file": "tools/wanbench/main_test.go",
       "name": "TestBenchmarkDetectsCorruptPayloadAndAbortRecovers",
       "workflow": "CI/test (Linux and Windows); Linux race",
