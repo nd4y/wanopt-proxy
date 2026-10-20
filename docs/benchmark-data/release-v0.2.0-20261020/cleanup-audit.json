@@ -1,0 +1,26 @@
+{
+  "client": {
+    "original_containers_unchanged": true,
+    "host_qdisc_unchanged": true,
+    "host_tcp_cc_unchanged": true,
+    "monitoring_unchanged": true,
+    "netbird_unchanged": true,
+    "runtime_absent": true,
+    "namespace_absent": true,
+    "owned_slice_inactive": true,
+    "links_absent": true,
+    "passed": true
+  },
+  "server": {
+    "original_containers_unchanged": true,
+    "host_qdisc_unchanged": true,
+    "host_tcp_cc_unchanged": true,
+    "monitoring_unchanged": true,
+    "netbird_unchanged": true,
+    "runtime_absent": true,
+    "namespace_absent": true,
+    "owned_slice_inactive": true,
+    "links_absent": true,
+    "passed": true
+  }
+}

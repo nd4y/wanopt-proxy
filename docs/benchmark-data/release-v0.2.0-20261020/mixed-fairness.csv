@@ -1,0 +1,5 @@
+profile,direction,cycles,tcp_competing_median_mbps,bbr_adaptive_competing_median_mbps
+moderate,GET,6,23.963274034952036,19.150007651810633
+moderate,POST,6,24.796538090171715,17.481658934655194
+severe,GET,6,9.143234159354414,8.273623382947676
+severe,POST,6,9.054603894531787,8.429619981586516

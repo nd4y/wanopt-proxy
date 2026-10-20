@@ -200,3 +200,7 @@ SOCKS and CONNECT; it safely falls back when the server declines compression.
 For global admission, adaptive compression, bounded PSK/pin rotation, Reno/BBR selection and measurement controls, see [operations and limits](docs/operations.md).
 
 The [UDP send-error follow-up on pr4/pr5](docs/sndbuf-pr4-pr5.md) includes the traced cause, regression tests, 72 matrix flows, 30 minutes of mixed load and 18 final-binary invocations. The [earlier campaign](docs/hardening-pr4-pr5.md) retains 900 short transfers, 108 sustained flows, faults, controller interruptions and remaining limits.
+
+## Release acceptance
+
+[v0.2.0](https://github.com/nd4y/wanopt-proxy/releases/tag/v0.2.0) - [pr4/pr5 report](docs/release-v0.2.0-pr4-pr5.md), [complete test plan](docs/test-plan.md), [real-channel cases](docs/real-channel-test-cases.md).

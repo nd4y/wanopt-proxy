@@ -1,0 +1,20 @@
+{
+  "release_source_commit": "ce3c7ce3207a21c918e0c50209b7693710a51006",
+  "validation_source_commit": "3021458c191f003c432e22626f73b2e9dd09e1c1",
+  "changed_paths": [
+    ".github/workflows/ci.yml",
+    "docs/real-channel-test-cases.md",
+    "docs/test-cases.json",
+    "docs/test-plan.md",
+    "tools/validation/check.py",
+    "tools/validation/host_profile.py",
+    "tools/validation/test_check.py",
+    "tools/validation/test_host_profile.py"
+  ],
+  "runtime_and_transport_build_inputs_unchanged": true,
+  "pinned_bbr_base_ancestor_preserved": true,
+  "validation_files_sha256": {
+    "tools/validation/check.py": "cf13102204c4fa93cf1efe8d3ed893593144c75fbecfa8a8e3a1fa1160b1437a",
+    ".github/workflows/ci.yml": "6c11aedc11ac6685f8cfabccad8de4c7136cfa5b318fef1369cf94bd09766c72"
+  }
+}

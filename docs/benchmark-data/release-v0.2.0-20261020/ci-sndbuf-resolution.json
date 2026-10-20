@@ -1,0 +1,81 @@
+{
+  "resolved": true,
+  "failed_run": 39336186838,
+  "original_cumulative_sndbuf_errors": 1137,
+  "original_trace_limit": "No original phase/queue snapshot; the1137 events are not retroactively claimed as kernel-traced.",
+  "reproduction_run": 39338328865,
+  "reproduction_phase": "after-bench-interactive-bulk-GET-r2",
+  "reproduced_sndbuf_errors": 738,
+  "reproduced_qdisc_drops": 738,
+  "reproduction_sha256": "ee1450305c24e96c37ff91c7adb7d39d4b1ce9e7aeaa3a3328b7a9b0f77243ce",
+  "cause": "The no-loss delay profile used an unbounded veth line with a finite10000-packet queue; the reproduced overflow mapped one-for-one to UDP SndbufErrors.",
+  "correction": "Define the CI no-loss control as100Mbit/s without loss/jitter; keep10000queue and strict zero positive-error gates. Verify overflow reporting with a warmed raw UDP probe in separate disposable namespaces.",
+  "physical_latency_only_profile_uncapped": false,
+  "physical_capacities_mbps": {
+    "native": 50,
+    "latency": 50,
+    "moderate": 50,
+    "severe": 20
+  },
+  "runtime_changed": false,
+  "validation_ci_run": 39441638174,
+  "validation_source_commit": "3021458c191f003c432e22626f73b2e9dd09e1c1",
+  "validation": [
+    {
+      "report": "expanded-ci-bbr-e2e.json",
+      "sha256": "c0372df3c86de25889455bc2d758fef7b030643f85e762eb06c2632482aeb0d5",
+      "controller": "bbr",
+      "cases": 175,
+      "positive_critical_udp_deltas": [
+        {
+          "SndbufErrors": 0,
+          "RcvbufErrors": 0,
+          "InErrors": 0,
+          "InCsumErrors": 0,
+          "MemErrors": 0,
+          "NoPorts": 94
+        },
+        {
+          "SndbufErrors": 0,
+          "RcvbufErrors": 0,
+          "InErrors": 0,
+          "InCsumErrors": 0,
+          "MemErrors": 0,
+          "NoPorts": 1
+        }
+      ],
+      "no_loss_snapshots_without_drops": 159,
+      "separate_expected_queue_probe_drops": 999,
+      "separate_expected_queue_probe_sndbuf": 999,
+      "cleanup_and_runtime_removed": true
+    },
+    {
+      "report": "expanded-ci-netem-e2e.json",
+      "sha256": "54f78cf4637674b0d01c4de802ffbbf6f5ee723d2e45b6f8fb2b4202b4dedf3b",
+      "controller": "reno",
+      "cases": 175,
+      "positive_critical_udp_deltas": [
+        {
+          "SndbufErrors": 0,
+          "RcvbufErrors": 0,
+          "InErrors": 0,
+          "InCsumErrors": 0,
+          "MemErrors": 0,
+          "NoPorts": 51
+        },
+        {
+          "SndbufErrors": 0,
+          "RcvbufErrors": 0,
+          "InErrors": 0,
+          "InCsumErrors": 0,
+          "MemErrors": 0,
+          "NoPorts": 1
+        }
+      ],
+      "no_loss_snapshots_without_drops": 159,
+      "separate_expected_queue_probe_drops": 999,
+      "separate_expected_queue_probe_sndbuf": 999,
+      "cleanup_and_runtime_removed": true
+    }
+  ]
+}
