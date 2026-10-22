@@ -106,22 +106,22 @@ Examples list every supported operational limit. Unknown YAML keys, multiple
 YAML documents, invalid pins, mismatched cert/key paths, invalid ports and
 inconsistent receive windows fail at startup.
 
-| Control | Default | Scope |
-| --- | --- | --- |
-| Handshake/auth deadline | 10 s | Each tunnel |
-| TCP open/reply deadline | 15 s | Each request |
-| Server connections | 256 | Whole server, including authentication |
-| Proxy streams | 128 plus one control stream | Each server connection |
-| Pending client requests | 256 | Whole client |
-| Local proxy connections | 256 | Shared between HTTP and SOCKS |
-| Local handshake / application idle | 10 s / 300 s | Each proxy connection |
-| HTTP response headers | 120 s, 64 KiB | Each forwarded response |
-| DNS | 5 s, 32 concurrent | Whole server resolver |
-| UDP flows / new flows | 256 / 32 per second | Each tunnel |
-| UDP queues / admission workers | 128 / 4 | Each tunnel; existing flows have a separate queue |
-| UDP flow idle | 60 s | Each outbound socket |
-| Client UDP sessions | 128 | Whole client |
-| Maximum stream / connection receive window | 16 / 24 MiB | Each tunnel |
+| Control                                    | Default                     | Scope                                             |
+| ------------------------------------------ | --------------------------- | ------------------------------------------------- |
+| Handshake/auth deadline                    | 10 s                        | Each tunnel                                       |
+| TCP open/reply deadline                    | 15 s                        | Each request                                      |
+| Server connections                         | 256                         | Whole server, including authentication            |
+| Proxy streams                              | 128 plus one control stream | Each server connection                            |
+| Pending client requests                    | 256                         | Whole client                                      |
+| Local proxy connections                    | 256                         | Shared between HTTP and SOCKS                     |
+| Local handshake / application idle         | 10 s / 300 s                | Each proxy connection                             |
+| HTTP response headers                      | 120 s, 64 KiB               | Each forwarded response                           |
+| DNS                                        | 5 s, 32 concurrent          | Whole server resolver                             |
+| UDP flows / new flows                      | 256 / 32 per second         | Each tunnel                                       |
+| UDP queues / admission workers             | 128 / 4                     | Each tunnel; existing flows have a separate queue |
+| UDP flow idle                              | 60 s                        | Each outbound socket                              |
+| Client UDP sessions                        | 128                         | Whole client                                      |
+| Maximum stream / connection receive window | 16 / 24 MiB                 | Each tunnel                                       |
 
 Windows grow on demand; these limits are not a total process memory budget.
 Choose smaller connection/flow limits for a single-user or low-memory host and
@@ -196,7 +196,6 @@ KCP, SRT and Hysteria ideas, the HTTP compression fix, and cloud benchmark limit
 Ordinary HTTP forwarding now honors the opt-in compression setting as well as
 SOCKS and CONNECT; it safely falls back when the server declines compression.
 
-
 For global admission, adaptive compression, bounded PSK/pin rotation, Reno/BBR selection and measurement controls, see [operations and limits](docs/operations.md).
 
 The [UDP send-error follow-up on pr4/pr5](docs/sndbuf-pr4-pr5.md) includes the traced cause, regression tests, 72 matrix flows, 30 minutes of mixed load and 18 final-binary invocations. The [earlier campaign](docs/hardening-pr4-pr5.md) retains 900 short transfers, 108 sustained flows, faults, controller interruptions and remaining limits.
@@ -204,3 +203,7 @@ The [UDP send-error follow-up on pr4/pr5](docs/sndbuf-pr4-pr5.md) includes the t
 ## Release acceptance
 
 [v0.2.0](https://github.com/nd4y/wanopt-proxy/releases/tag/v0.2.0) - [pr4/pr5 report](docs/release-v0.2.0-pr4-pr5.md), [complete test plan](docs/test-plan.md), [real-channel cases](docs/real-channel-test-cases.md).
+
+## Development standard
+
+This repository adopts version 0.4.0 of the shared development standard. Read the [English guide](docs/en/development-standard.md) or [Russian guide](docs/ru/development-standard.md). The local toolkit checks staged secrets, changed-file formatting and bilingual documentation before merge. Existing product CI remains in place. Adoption is in progress; product acceptance and legacy-document translation are recorded separately in .repo-policy.json.
